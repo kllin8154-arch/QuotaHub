@@ -1,13 +1,13 @@
 {
-  "name": "AI Quota Hub · AI 额度中心",
-  "short_name": "额度中心",
-  "description": "AI 服务余额与订阅使用看板",
+  "name": "Agnovexa One · AI 额度与订阅监测",
+  "short_name": "Agnovexa One",
+  "description": "多 AI 服务额度与订阅状态统一监测",
   "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#08090d",
-  "theme_color": "#08090d",
+  "background_color": "#F5F1E9",
+  "theme_color": "#155D4D",
   "icons": [
     {
       "src": "./pwa-192.png",

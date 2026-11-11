@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
-<link rel="icon" href="./quotahub-favicon-v2.svg" type="image/svg+xml"/><title>QuotaHub · 桌面组件视觉工作台</title>
+<link rel="icon" href="./icon.svg" type="image/svg+xml"/><title>Agnovexa One · 桌面组件视觉工作台</title>
 <style>
 :root{font-family:Inter,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;color:#ebeff4;background:#0a0c11;font-synthesis:none;--op:.74;--unit:1}
 *{box-sizing:border-box}body{margin:0;overflow:hidden}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #a5b9ef;outline-offset:3px}
@@ -222,7 +222,7 @@ body.runtime .widget.layout-side .w-row{padding:13px 0}
 body.runtime .widget.layout-rail .w-list{gap:8px}
 body.runtime .widget.layout-rail .w-row{padding:10px}
 
-/* QuotaHub v0.2 — shared slim glass widget / native window */
+/* Agnovexa One v0.2 — shared slim glass widget / native window */
 .widget{
   border-radius:23px;
   border-color:rgba(245,249,255,.23);
@@ -433,7 +433,7 @@ body.runtime .widget.warm .widget-settings{background:rgba(79,68,69,.98)!importa
 </style>
 <style>
 
-/* QuotaHub compact isolation v0.3 — prevent the empty state from escaping. */
+/* Agnovexa One compact isolation v0.3 — prevent the empty state from escaping. */
 .widget.compact .widget-head,
 .widget.compact .w-sub,
 .widget.compact .w-banner,
@@ -544,11 +544,18 @@ body.runtime .widget.clear .widget-resize-grip{color:#32485d}
 body.runtime .widget.settings-open .widget-resize-grip{display:none}
 </style>
 
-</head>
+<style>
+.brand-logo:after,.widget .brand-logo:after{display:none!important}
+.brand-logo,.widget .brand-logo{background:transparent!important;box-shadow:none!important;border-radius:10px!important;padding:0!important}
+.brand-logo img,.widget .brand-logo img{width:100%!important;height:100%!important;object-fit:contain!important;display:block!important}
+.agnovexa-brand-preview{display:flex;align-items:center;gap:11px;border:1px solid #39434c;border-radius:12px;padding:12px;background:#242d35;color:#f4f6f5;font-size:14px;font-weight:700}
+.agnovexa-brand-preview img{width:39px;height:39px;flex-shrink:0}
+.agnovexa-brand-preview small{display:block;margin-top:4px;font-size:10px;color:#a7b7b3;font-weight:500}
+</style></head>
 <body>
 <div class="studio">
 <aside class="controls">
-  <div class="control-top"><div class="wordmark"><span class="brand-logo"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7.5h3v9H5zM10.5 4h3v12.5h-3zM16 9h3v7.5h-3z" fill="currentColor"/></svg></span>QuotaHub <span style="font-size:10px;color:#747b89;font-weight:450">视觉工作台</span></div><p>实时切换组件尺寸、透明程度与品牌标识。右侧是模拟桌面，不是传统应用窗口。</p></div>
+  <div class="control-top"><div class="wordmark"><span class="brand-logo"><img src="./icon.svg" alt="" draggable="false"/></span>Agnovexa One <span style="font-size:10px;color:#747b89;font-weight:450">视觉工作台</span></div><p>实时切换组件尺寸、透明程度与品牌标识。右侧是模拟桌面，不是传统应用窗口。</p></div>
   <div class="control-group"><div class="control-label">展示环境</div><div class="switches"><button data-env="desktop" class="active">Windows 桌面</button><button data-env="mobile">手机桌面</button></div></div>
   <div class="control-group"><div class="control-label" id="layoutLabel">组件布局</div><div class="choices">
    <button class="choice active" data-layout="card"><span class="mockshape card"><i></i><i></i><i></i></span><small>卡片</small></button>
@@ -569,11 +576,7 @@ body.runtime .widget.settings-open .widget-resize-grip{display:none}
     <button class="tint active" data-tint="smoke"><i></i>烟灰</button><button class="tint" data-tint="clear"><i></i>冰白</button><button class="tint" data-tint="warm"><i></i>暖灰</button>
   </div></div>
   <div class="control-group"><div class="range-head"><span>面板不透明度</span><output id="opacityOutput">74%</output></div><input id="opacity" type="range" min="25" max="95" value="74"/><div class="hint">仅演示视觉透明度，独立桌面小组件的真实背景模糊程度取决于操作系统。</div></div>
-  <div class="control-group"><div class="control-label">品牌图标方向</div><div class="brand-choices">
-    <button class="brand-choice active" data-logo="bars"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="4" height="10" rx="2" fill="currentColor"/><rect x="10" y="4" width="4" height="16" rx="2" fill="currentColor"/><rect x="16" y="8" width="4" height="12" rx="2" fill="currentColor"/></svg>数据柱</button>
-    <button class="brand-choice" data-logo="ring"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="3"/><path d="M12 4a8 8 0 018 8" stroke="#c35a61" stroke-width="3"/></svg>额度环</button>
-    <button class="brand-choice" data-logo="layers"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5ZM4 12l8 4.5 8-4.5M4 16.5 12 21l8-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>叠层</button>
-  </div></div>
+  <div class="control-group ag-brand-rule"><div class="control-label">品牌标识</div><div class="agnovexa-brand-preview"><img src="./icon.svg" alt="Agnovexa One"/><span>Agnovexa One<small>统一品牌 · 深墨绿</small></span></div></div>
   <div class="control-bottom"><div class="notice">当前数值均为 <b>演示数据</b>。设计原则：简约、低对比度、薄玻璃、不堆叠营销文案。平台图标优先用各自品牌标识。</div><div class="link-actions"><a class="primary" href="/?demo=1" target="_blank">打开完整看板</a><button id="resetPos">复位组件</button></div></div>
 </aside>
 <main class="viewport" id="viewport">
@@ -585,7 +588,7 @@ body.runtime .widget.settings-open .widget-resize-grip{display:none}
   </div>
   <div class="stage-caption">拖动组件顶部可调整位置 · 预览数据</div>
   <section class="widget smoke layout-card" id="widget" aria-label="桌面额度组件">
-    <header class="widget-head" id="dragHandle"><div class="widget-title"><span class="brand-logo" id="widgetLogo"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="4" height="10" rx="2" fill="currentColor"/><rect x="10" y="4" width="4" height="16" rx="2" fill="currentColor"/><rect x="16" y="8" width="4" height="12" rx="2" fill="currentColor"/></svg></span><span>QuotaHub</span></div><div class="head-actions"><button id="widgetRefresh" title="刷新演示数据"><svg viewBox="0 0 24 24"><path d="M19 8a8 8 0 10.3 7M19 4v4h-4"/></svg></button><button id="widgetMode" title="切换布局"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M11 10v9"/></svg></button><button id="widgetAppearance" title="玻璃外观与布局" aria-label="调整玻璃外观"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M9 4v6M15 14v6"/></svg></button><button id="widgetPin" title="始终置顶" aria-label="始终置顶" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l1 7 3 3v2H4v-2l3-3 1-7M12 15v6"/></svg></button><button id="widgetCollapse" title="收起预览" aria-label="收纳组件"><svg viewBox="0 0 24 24"><path d="M5 16h14l-1 5H6l-1-5M12 3v11m-4-4 4 4 4-4"/></svg></button></div></header>
+    <header class="widget-head" id="dragHandle"><div class="widget-title"><span class="brand-logo" id="widgetLogo"><img src="./icon.svg" alt="" draggable="false"/></span><span>Agnovexa One</span></div><div class="head-actions"><button id="widgetRefresh" title="刷新演示数据"><svg viewBox="0 0 24 24"><path d="M19 8a8 8 0 10.3 7M19 4v4h-4"/></svg></button><button id="widgetMode" title="切换布局"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M11 10v9"/></svg></button><button id="widgetAppearance" title="玻璃外观与布局" aria-label="调整玻璃外观"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M9 4v6M15 14v6"/></svg></button><button id="widgetPin" title="始终置顶" aria-label="始终置顶" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l1 7 3 3v2H4v-2l3-3 1-7M12 15v6"/></svg></button><button id="widgetCollapse" title="收起预览" aria-label="收纳组件"><svg viewBox="0 0 24 24"><path d="M5 16h14l-1 5H6l-1-5M12 3v11m-4-4 4 4 4-4"/></svg></button></div></header>
     <div class="w-sub">3 个账号 · 最近同步 5 分钟前</div>
     <div class="w-banner"><small>已绑定账号</small><strong>03 <small>个账号</small></strong></div>
     <div class="w-list">
@@ -612,14 +615,14 @@ body.runtime .widget.settings-open .widget-resize-grip{display:none}
     </section>
     <div class="compact-face"><button class="compact-toggle" id="compactToggle" title="点击展开组件">
       <span class="brand-logo" id="compactLogo"></span>
-      <span class="mini-copy"><strong>QuotaHub</strong><small>3 个账户 · 示例</small></span>
+      <span class="mini-copy"><strong>Agnovexa One</strong><small>3 个账户 · 示例</small></span>
       <svg class="mini-chevron" viewBox="0 0 24 24"><path d="m8 5 7 7-7 7"/></svg>
     </button></div>
   </section>
   <div class="taskbar"><span class="win">⊞</span><span class="finder">▣</span><span class="edge">e</span><span class="app">◈</span></div><div class="taskbar-time">14:40<br/>2026/11/10</div><div class="preview-help">这是桌面附着式组件的外观模拟，不是完整应用窗口。</div>
   <div class="m-screen">
     <div class="m-phone"><div class="m-time">09:41</div><div class="m-date">11月10日 星期二</div>
-     <div class="m-widget wide" id="mWidget"><div class="m-widget-title">QuotaHub <span>演示额度 · 5 分钟前</span></div>
+     <div class="m-widget wide" id="mWidget"><div class="m-widget-title">Agnovexa One <span>演示额度 · 5 分钟前</span></div>
        <div class="m-rows">
          <div class="m-line"><div class="provider-icon deepseek"><img src="./provider-icons/deepseek.svg" alt="DeepSeek"/></div><div><div class="m-name">DeepSeek</div><div class="m-value">¥86.42</div></div></div>
          <div class="m-line"><div class="provider-icon chatgpt"><img src="./provider-icons/openai.svg" alt="ChatGPT"/></div><div><div class="m-name">ChatGPT</div><div class="m-value">32 / 80</div></div></div>
@@ -635,11 +638,8 @@ body.runtime .widget.settings-open .widget-resize-grip{display:none}
 <script>
 const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
 const vp=$('#viewport'), w=$('#widget'), mobile=$('#mWidget');
-const marks={
- bars:'<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="4" height="10" rx="2" fill="currentColor"/><rect x="10" y="4" width="4" height="16" rx="2" fill="currentColor"/><rect x="16" y="8" width="4" height="12" rx="2" fill="currentColor"/></svg>',
- ring:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="3"/><path d="M12 4a8 8 0 018 8" stroke="#c35a61" stroke-width="3"/></svg>',
- layers:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5ZM4 12l8 4.5 8-4.5M4 16.5 12 21l8-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-};
+const agnovexaMark='<img src="./icon.svg" alt="Agnovexa One" draggable="false"/>';
+const marks={bars:agnovexaMark,ring:agnovexaMark,layers:agnovexaMark};
 let lay='card', origin={x:50,y:46};
 let compactMode='edge', compact=false;
 let oldExpanded={left:'50%',top:'46%'};

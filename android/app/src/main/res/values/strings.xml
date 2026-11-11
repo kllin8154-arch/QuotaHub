@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">AI Quota Hub</string>
-    <string name="title_activity_main">AI Quota Hub</string>
+    <string name="app_name">Agnovexa One</string>
+    <string name="title_activity_main">Agnovexa One</string>
     <string name="package_name">com.aiquotahub.mobile</string>
     <string name="custom_url_scheme">com.aiquotahub.mobile</string>
 </resources>

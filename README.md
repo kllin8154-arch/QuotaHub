@@ -1,8 +1,13 @@
-# QuotaHub
+# Agnovexa One
+
+**Formerly QuotaHub.** The repository retains its historical name to preserve existing links. The Windows app and UI are now called Agnovexa One.
+
+The official ivory and forest-green mark comes from the owner-supplied design. Sources are in public/brand/. Never publish local browser sessions or OAuth JSON downloads.
+
 
 **Local-first AI quota dashboard** — Windows glass widget, web dashboard and Android project.
 
-QuotaHub is a desktop-first dashboard for viewing AI subscription usage, API credit balances and historical data. It combines a resizable translucent widget with a full multi-provider usage dashboard.
+Agnovexa One is a desktop-first dashboard for viewing AI subscription usage, API credit balances and historical data. It combines a resizable translucent widget with a full multi-provider usage dashboard.
 
 ## Features
 
@@ -14,7 +19,7 @@ QuotaHub is a desktop-first dashboard for viewing AI subscription usage, API cre
 
 ## Status and limits
 
-Version 0.9.3 is an evolving personal project, not an official AI platform application. In the desktop build, authorized login and visible quota detection for DeepSeek and ChatGPT are best-effort. A 90-second sample cycle is attempted while the app is running; webpage redesign, slow provider updates or authentication checks may interrupt collection. Some services require official API credentials or manual records. ChatGPT subscription quotas are not OpenAI API balances.
+Version 0.11.0 is an evolving personal project, not an official AI platform application. In the desktop build, authorized login and visible quota detection for DeepSeek and ChatGPT are best-effort. A 90-second sample cycle is attempted while the app is running; webpage redesign, slow provider updates or authentication checks may interrupt collection. Some services require official API credentials or manual records. ChatGPT subscription quotas are not OpenAI API balances.
 
 **Do not confuse data from different platforms, accounts or units.** A dashboard reading is not an authoritative billing record.
 
@@ -64,7 +69,7 @@ The Android project is an independent client; it does not automatically inherit 
 
 The Windows Electron edition optionally supports Google identity verification using OAuth 2.0 Authorization Code with PKCE, the system browser, and a 127.0.0.1 loopback callback.
 
-Publisher setup (once): create an OAuth 2.0 client with application type Desktop app at https://console.cloud.google.com/auth/clients. Set up the consent screen (and test users when in Testing mode). In QuotaHub use Identity & Sign-in > Application OAuth settings to enter the Desktop Client ID. Alternatively supply QUOTAHUB_GOOGLE_CLIENT_ID as a process environment variable. A Desktop Client ID is not a secret; do not commit any access tokens, passwords or local identity records.
+Publisher setup (once): create an OAuth 2.0 client with application type Desktop app at https://console.cloud.google.com/auth/clients. Set up the consent screen (and test users when in Testing mode). In Agnovexa One use Identity & Sign-in > Application OAuth settings to enter the Desktop Client ID. Alternatively supply QUOTAHUB_GOOGLE_CLIENT_ID as a process environment variable. A Desktop Client ID is not a secret; do not commit any access tokens, passwords or local identity records.
 
 End users can then choose Continue with Google. The feature asks for openid, email and profile only. Authorization code and access token stay in memory and are discarded; a verified identity snapshot is stored locally using Electron safeStorage encryption, where available. Logging out removes that local association, without deleting AI platform balances or session profiles.
 
@@ -87,3 +92,5 @@ QuotaHub 是本地优先的 AI 平台额度看板，具有 Windows 玻璃态桌�
 开发：npm ci、npm run dev；Windows 桌面：npm run desktop；构建便携版：npm run pack:win。
 
 用户账号、密钥、Cookie、浏览器登录会话以及额度记录均保存在用户本机，不包含在 GitHub 公开仓库。ChatGPT 和 DeepSeek 网页采集会随平台页面调整而变化，不能保证永久无障碍同步。
+
+A Google Desktop OAuth JSON file can be renamed, for example Agnovexa-One-Google-OAuth-Desktop.json. Configure only its client_id locally. Never commit client_secret JSON or user-data folders.

@@ -9,7 +9,7 @@ const { createGoogleIdentity } = require('./googleIdentity.cjs');
 const dataDir = process.env.AIQUOTA_DATA_DIR || path.join(app.getPath('userData'), 'local-data');
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
-app.setAppUserModelId('com.aiquotahub.desktop');
+app.setAppUserModelId('com.agnovexa.one.desktop');
 const secretsPath = path.join(dataDir, 'secrets.json');
 let googleIdentity = null;
 function broadcastIdentity(status){
@@ -287,7 +287,7 @@ ipcMain.handle('quota:openExternal',async(_,raw)=>{
  await shell.openExternal(url.href);
 });
 function createWindow() {
- const win=new BrowserWindow({width:1440,height:910,minWidth:880,minHeight:650,backgroundColor:'#08090d',title:'AI Quota Hub',autoHideMenuBar:true,show:false,
+ const win=new BrowserWindow({width:1440,height:910,minWidth:880,minHeight:650,backgroundColor:'#08090d',title:'Agnovexa One',autoHideMenuBar:true,show:false,
   webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true}});
  win.once('ready-to-show',()=>win.show());
  win.webContents.setWindowOpenHandler(({url})=>{try{const u=new URL(url);if(u.protocol==='https:' && allowedHosts.has(u.hostname)) shell.openExternal(url);}catch{}return {action:'deny'};});
@@ -614,7 +614,7 @@ function updateTrayMenu() {
     click:item=>{widgetSettings.showTaskbar=item.checked;saveWidgetSettings();if(gadget&&!gadget.isDestroyed())gadget.setSkipTaskbar(!widgetSettings.showTaskbar);updateTrayMenu();}},
   {type:'separator'},
   {label:'打开额度管理',click:()=>createWindow()},
-  {label:'重新启动 QuotaHub',click:()=>{
+  {label:'重新启动 Agnovexa One',click:()=>{
     // app.exit() skips before-quit and the browser's normal session teardown.
     webQuota.flushPersistentSessions();
     app.relaunch();
@@ -633,11 +633,11 @@ function setupTray(){
   if(icon.isEmpty())icon=nativeImage.createFromPath(png);
   if(icon.isEmpty())throw Error('Tray icon not found');
   tray=new Tray(icon.resize({width:20,height:20}));
-  tray.setToolTip('QuotaHub · 左键显示/隐藏，右键设置与退出');
+  tray.setToolTip('Agnovexa One · 左键显示/隐藏，右键设置与退出');
   tray.on('click',()=>toggleWidgetVisible());
   tray.on('double-click',()=>{ensureWidgetVisible()});
   updateTrayMenu();
- }catch(error){console.error('QuotaHub tray initialization failed:',error.message)}
+ }catch(error){console.error('Agnovexa One tray initialization failed:',error.message)}
 }
 
 ipcMain.handle('widget:setAppearance',(_,changes)=>{

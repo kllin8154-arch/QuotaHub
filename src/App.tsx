@@ -230,7 +230,7 @@ function App() {
   try{
    await window.quotaBridge.webOpen(draft.kind,editor.id)
    setWebStatus(['chatgpt','deepseek'].includes(draft.kind)?
-      '仅需在官网登录。QuotaHub 会自动识别额度、关联账号并定时记录变化。':
+      '仅需在官网登录。Agnovexa One 会自动识别额度、关联账号并定时记录变化。':
       '在官方网页登录后，可点击读取页面额度。')
   }catch(e){setWebError(true);setWebStatus(e instanceof Error?e.message:String(e))}
   finally{setWebBusy(false)}
@@ -351,14 +351,14 @@ function App() {
  }
  function exportData() {
   const a = document.createElement('a'), blob = new Blob([JSON.stringify({version:1,createdAt:new Date().toISOString(),providers:items.map(p=>({...p,connected:false}))},null,2)],{type:'application/json'})
-  a.href=URL.createObjectURL(blob);a.download='AIQuotaHub-额度记录.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
+  a.href=URL.createObjectURL(blob);a.download='AIAgnovexa One-额度记录.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
   setToast('已导出额度记录（不包含密钥）')
  }
  function switchSection(next:Section) {setSection(next);setSidebar(false);setCategory('全部');setQuery('')}
  const topCards = [...viewing].sort((a,b)=>Number(b.value!=null)-Number(a.value!=null)).slice(0,4)
  return <div className={'shell quota-refined tone-'+glassTone}>
   <aside className={'sidebar '+(sidebar?'sidebar-open':'')}>
-   <button className="brand" onClick={()=>switchSection('overview')}><span className="brand-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="15" cy="15" r="10" fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray="54 12" transform="rotate(-37 15 15)"/><circle cx="25" cy="25" r="3" fill="#ef777b"/></svg></span><span>QuotaHub<small>额度与订阅管理</small></span></button>
+   <button className="brand" onClick={()=>switchSection('overview')}><span className="brand-mark"><img src="./icon.svg" alt="" aria-hidden="true"/></span><span>Agnovexa One<small>AI 额度与订阅监测</small></span></button>
    <div className="sidebar-group"><span className="group-heading">工作区</span>
     <nav>{navItems.map(item=><button key={item.id} className={'nav-item '+(section===item.id?'nav-active':'')} onClick={()=>switchSection(item.id)}><item.icon size={19}/><span>{item.name}</span>{section===item.id && <span className="nav-active-indicator"/>}</button>)}</nav>
    </div>
@@ -374,7 +374,7 @@ function App() {
   {sidebar && <button className="mobile-shade" onClick={()=>setSidebar(false)} aria-label="关闭菜单"/>}
   <div className="page">
    <header className="topbar">
-    <div className="topbar-left"><button className="mobile-menu icon-button" onClick={()=>setSidebar(!sidebar)} aria-label="展开菜单"><Menu size={22}/></button><span className="breadcrumb">QuotaHub <ChevronRight size={13}/> <b>{navItems.find(x=>x.id===section)?.name}</b></span></div>
+    <div className="topbar-left"><button className="mobile-menu icon-button" onClick={()=>setSidebar(!sidebar)} aria-label="展开菜单"><Menu size={22}/></button><span className="breadcrumb">Agnovexa One <ChevronRight size={13}/> <b>{navItems.find(x=>x.id===section)?.name}</b></span></div>
     <div className="topbar-right"><div className="tone-picker" aria-label="玻璃面板配色">
       <button title="烟灰" aria-label="烟灰玻璃" className={glassTone==='smoke'?'selected':''} onClick={()=>setGlassTone('smoke')}><i className="tone-dot smoke"/></button>
       <button title="冰白" aria-label="冰白玻璃" className={glassTone==='clear'?'selected':''} onClick={()=>setGlassTone('clear')}><i className="tone-dot clear"/></button>
@@ -432,7 +432,7 @@ function App() {
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AI QUOTA HUB / v0.10.0</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.11.0</span><span>本地优先 · 安全管理</span></footer>
   </div>
   <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}/>
   {editor && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget && !busy)setEditor(null)}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -464,7 +464,7 @@ function App() {
       <p className="security-hint">账户模式使用面板访问令牌与用户 ID；密钥模式使用 API Key，两者不等价。额度点默认不换算成金额，若中转站确认换算率，可自行设置除数。</p>
      </div>}
      <label className="field"><span>API Key {items.find(x=>x.id===editor?.id)?.connected?'（已连接；留空保持原连接）':''}</span><input type="password" value={secret} disabled={!desktop} autoComplete="off" spellCheck={false} placeholder={desktop?'输入密钥，保存时验证连接':'网页版禁用密钥输入'} onChange={e=>setSecret(e.target.value)}/></label>{!desktop && <div className="security-hint">请使用 Windows 桌面端或 Android 安装版进行安全自动连接。网页端仍可保存手动额度。</div>}</div>}
-    {!isLiveKind(draft.kind)&&!['chatgpt','deepseek'].includes(draft.kind) && <div className="manual-note"><ShieldCheck size={17}/><span>此平台未提供适用于本应用的公开额度 API。你可以在下方打开官方网页，自行登录并授权读取页面上可见的额度。无需输入密码、Cookie 或令牌到 QuotaHub。</span></div>}
+    {!isLiveKind(draft.kind)&&!['chatgpt','deepseek'].includes(draft.kind) && <div className="manual-note"><ShieldCheck size={17}/><span>此平台未提供适用于本应用的公开额度 API。你可以在下方打开官方网页，自行登录并授权读取页面上可见的额度。无需输入密码、Cookie 或令牌到 Agnovexa One。</span></div>}
     {draft.kind!=='relay' && draft.kind!=='custom' && <section className="web-quota-panel">
      <h3><Cloud size={18}/> 官方网页额度监测 <span className="setting-tag">90 秒采样</span></h3>
      <p>{['chatgpt','deepseek'].includes(draft.kind)?

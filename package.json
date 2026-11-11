@@ -1,8 +1,8 @@
 {
-  "name": "aiquotahub",
-  "version": "0.10.0",
+  "name": "agnovexa-one",
+  "version": "0.11.0",
   "private": true,
-  "description": "Local-first AI subscription and API credit dashboard",
+  "description": "Agnovexa One - unified AI balances and subscription monitoring",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -14,8 +14,8 @@
     "pack:win": "npm run build && electron-builder --win portable --x64 --publish never",
     "android:sync": "npm run build && npx cap sync android",
     "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug",
-    "test:quota": "node tests/test-chatgpt-autolink.cjs && node tests/test-deepseek-autolink.cjs && node tests/test-webmonitor.cjs",
-    "test:google": "node tests/test-google-identity.cjs"
+    "test:google": "node tests/test-google-identity.cjs",
+    "test:quota": "node tests/test-chatgpt-autolink.cjs && node tests/test-deepseek-autolink.cjs && node tests/test-webmonitor.cjs"
   },
   "dependencies": {
     "@capacitor/browser": "^7.0.3",
@@ -40,8 +40,8 @@
     "wait-on": "^9.0.0"
   },
   "build": {
-    "appId": "com.aiquotahub.desktop",
-    "productName": "AI Quota Hub",
+    "appId": "com.agnovexa.one.desktop",
+    "productName": "Agnovexa One",
     "directories": {
       "output": "release"
     },
@@ -52,14 +52,14 @@
     ],
     "asar": true,
     "portable": {
-      "artifactName": "AIQuotaHub-${version}-portable.exe"
+      "artifactName": "Agnovexa-One-${version}-portable.exe"
     },
     "win": {
       "target": [
         "portable"
       ],
       "icon": "public/app-icon.ico",
-      "executableName": "QuotaHub"
+      "executableName": "AgnovexaOne"
     }
   }
 }
