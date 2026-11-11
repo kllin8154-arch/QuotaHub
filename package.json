@@ -1,6 +1,6 @@
 {
   "name": "agnovexa-one",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "private": true,
   "description": "Agnovexa One - unified AI balances and subscription monitoring",
   "type": "module",
@@ -16,6 +16,7 @@
     "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug",
     "test:google": "node tests/test-google-identity.cjs",
     "test:links": "node tests/test-account-links.cjs",
+    "test:refresh": "node tests/test-refresh-coordinator.cjs",
     "test:quota": "node tests/test-chatgpt-autolink.cjs && node tests/test-deepseek-autolink.cjs && node tests/test-webmonitor.cjs",
     "test:health": "node --experimental-strip-types tests/test-sync-health.mjs"
   },

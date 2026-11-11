@@ -7,6 +7,7 @@ const net = require('node:net');
 const webQuota = require('./webQuota.cjs');
 const { createGoogleIdentity } = require('./googleIdentity.cjs');
 const { createAccountLinks } = require('./accountLinks.cjs');
+const { createRefreshCoordinator } = require('./refreshCoordinator.cjs');
 const dataDir = process.env.AIQUOTA_DATA_DIR || path.join(app.getPath('userData'), 'local-data');
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
@@ -260,11 +261,10 @@ function notifyQuota(payload){
 }
 ipcMain.handle('quota:updateWidgetAccounts',(_,accounts)=>saveWidgetAccounts(accounts));
 ipcMain.handle('widget:getAccounts',()=>getWidgetAccounts());
-let apiPolling=false;
+let apiPolling=null;
 async function refreshConnectedApiAccounts(){
- if(apiPolling)return;
- apiPolling=true;
- try{
+ if(apiPolling)return apiPolling;
+ apiPolling=(async()=>{
   const accounts=getWidgetAccounts(),creds=loadSecrets();
   for(const p of accounts){
    const entry=creds[p.id];
@@ -278,26 +278,16 @@ async function refreshConnectedApiAccounts(){
     notifyQuota({type:'snapshot',point});
    }catch(err){notifyQuota({type:'stale',id:p.id,reason:'官方 API 暂时无法同步'})}
   }
- }finally{apiPolling=false}
+ })();
+ try{return await apiPolling}
+ finally{apiPolling=null}
 }
-ipcMain.handle('widget:refreshAccounts',async()=>{
- const originals=getWidgetAccounts();
- const credentials=loadSecrets();
- const updated=await Promise.all(originals.map(async p=>{
-  const secret=credentials[p.id];
-  if(!p.connected||!secret?.cipher||!supported.has(secret.kind)||webQuota.hasBinding(p.id))return p;
-  try {
-   const result=await fetchLive(secret.kind,await decrypt(secret.cipher),secret.relay);
-   const point={id:p.id,kind:p.kind,value:result.value,unit:result.unit,
-     metric:result.metric,limit:p.limit,at:result.updatedAt||new Date().toISOString(),source:'api'};
-   webQuota.record(point);
-   notifyQuota({type:'snapshot',point});
-   return {...p,value:result.value,unit:result.unit,metric:result.metric,updatedAt:result.updatedAt};
-  }catch{return p}
- }));
- saveWidgetAccounts(updated);
- return updated;
+const widgetRefreshCoordinator=createRefreshCoordinator({
+ pollWeb:()=>webQuota.pollAll(),
+ pollApi:()=>refreshConnectedApiAccounts(),
+ readAccounts:()=>getWidgetAccounts()
 });
+ipcMain.handle('widget:refreshAccounts',()=>widgetRefreshCoordinator.refresh());
 ipcMain.handle('quota:connected',()=>Object.entries(loadSecrets()).filter(([,v])=>v && typeof v==='object' && supported.has(v.kind)).map(([id])=>id));
 ipcMain.handle('quota:connect',async(_,kind,id,key,relay)=>{
  verify(kind,id);

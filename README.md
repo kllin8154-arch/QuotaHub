@@ -100,3 +100,7 @@ Google OAuth network repair and callback behavior: see [GOOGLE-OAUTH.md](GOOGLE-
 ## Existing-account reuse
 
 See [ACCOUNT-LINKS.md](ACCOUNT-LINKS.md). Google login is identity only. Existing platform login sessions are restored locally; new service authorizations remain independent. Google identity can group user-confirmed existing accounts without asking them to log in again.
+
+## Unified desktop quota refresh
+
+Since v0.13.1, the desktop widget Refresh action polls both already authorized official usage pages and saved supported API quota sources. Concurrent refresh requests share work, and the returned balances are taken from the latest post-refresh account state. See [RELEASE-NOTES-v0131.md](RELEASE-NOTES-v0131.md).

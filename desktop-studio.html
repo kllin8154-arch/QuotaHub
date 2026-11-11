@@ -722,11 +722,33 @@ $('#opacity').addEventListener('input',e=>{const n=Number(e.target.value);w.styl
 $$('[data-logo]').forEach(b=>b.addEventListener('click',()=>{$$('.brand-choice').forEach(x=>x.classList.toggle('active',x===b));$('#widgetLogo').innerHTML=marks[b.dataset.logo];$('.control-top .brand-logo').innerHTML=marks[b.dataset.logo];renderCompact()}));
 function reset(){origin={x:50,y:46};oldExpanded={left:'50%',top:'46%'};w.style.left=origin.x+'%';w.style.top=origin.y+'%';renderCompact()}
 $('#resetPos').addEventListener('click',reset);
-$('#widgetRefresh').addEventListener('click',()=>{
- if(document.body.classList.contains('runtime')&&window.quotaWidget?.refreshAccounts){
-  $('.w-sub').textContent='正在同步已连接账户…';
-  void window.quotaWidget.refreshAccounts().then(renderNativeAccounts).catch(()=>{$('.w-sub').textContent='同步失败，可打开额度中心查看'});
- }else{$('.w-sub').textContent='3 个账号 · 刚刚同步（演示）'}
+let widgetRefreshBusy=false;
+$('#widgetRefresh').addEventListener('click',async()=>{
+ if(!document.body.classList.contains('runtime')||!window.quotaWidget?.refreshAccounts){
+  $('.w-sub').textContent='3 个账号 · 刚刚同步（演示）';return;
+ }
+ if(widgetRefreshBusy)return;
+ widgetRefreshBusy=true;
+ const button=$('#widgetRefresh');
+ button.disabled=true;
+ button.setAttribute('aria-busy','true');
+ button.title='正在刷新网页额度和 API 余额';
+ $('.w-sub').textContent='正在采集官方额度页面及 API 数据…';
+ try{
+  const result=await window.quotaWidget.refreshAccounts();
+  widgetRefreshBusy=false;
+  renderNativeAccounts(result);
+  const failed=result.filter(p=>p.syncError).length;
+  if(failed)button.title='刷新已完成 · '+failed+' 个采集源异常';
+  else button.title='刷新已完成 · 数据已更新';
+ }catch(err){
+  button.title='刷新失败，请稍后重试';
+  $('.w-sub').textContent='同步失败 · 保留最后成功值';
+ }finally{
+  widgetRefreshBusy=false;
+  button.disabled=false;
+  button.removeAttribute('aria-busy');
+ }
 });
 $('#widgetMode').addEventListener('click',()=>applyLayout({card:'rail',rail:'side',side:'card'}[lay]));
 $('#openDashboard').addEventListener('click',()=>{if(window.quotaWidget?.openDashboard)window.quotaWidget.openDashboard();else window.open('/?demo=1','_blank','noopener')});
@@ -782,7 +804,8 @@ function renderNativeAccounts(all) {
  recentNativeAccounts=accounts;
  const connected=accounts.filter(p=>p&&nativeHealth(p)==='healthy').length;
  const inactive=accounts.filter(p=>p&&['error','delayed'].includes(nativeHealth(p))).length;
- $('.w-sub').textContent=accounts.length+' 个账号 · '+connected+' 个同步正常'+(inactive?' · '+inactive+' 个异常':'');
+ $('.w-sub').textContent=widgetRefreshBusy?'正在采集官方额度页面及 API 数据…':
+  accounts.length+' 个账号 · '+connected+' 个同步正常'+(inactive?' · '+inactive+' 个异常':'');
  const mini=$('.mini-copy small');
  if(mini)mini.textContent=accounts.length+' 个账号 · '+connected+' 已连接';
  const tile=$('.w-banner strong');

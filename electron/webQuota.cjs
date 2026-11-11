@@ -171,6 +171,17 @@ const READ_SCRIPT=[
  '})()'
 ].join('');
 function sessionKey(kind,id){return kind+'--'+id}
+// One browser page must not be reloaded by a manual refresh and the
+// background poll at the same time. A second caller receives the same sample.
+const pageRefreshes=new Map();
+async function withAccountRefresh(kind,id,action){
+ const key=sessionKey(kind,id);
+ if(pageRefreshes.has(key))return pageRefreshes.get(key);
+ const task=Promise.resolve().then(action);
+ pageRefreshes.set(key,task);
+ try{return await task}
+ finally{if(pageRefreshes.get(key)===task)pageRefreshes.delete(key)}
+}
 const autoChecking=new Set();
 const autoTimers=new Map();
 async function autoLinkDeepSeek(kind,id,win){
@@ -192,7 +203,7 @@ async function autoLinkDeepSeek(kind,id,win){
   cfg[id]={kind,signature:selected.signature,unit:selected.unit,metric:selected.metric,
    label:selected.label,name:kind==='chatgpt'?'ChatGPT':'DeepSeek API',autoLinked:true};
   writeFile(bindingsPath,cfg);
-  const point=await sample(kind,id,true);
+  const point=await withAccountRefresh(kind,id,()=>sample(kind,id,true));
   if(!point)throw Error('首次余额同步失败');
   notify({type:'linked',point,provider:{id,kind,name:kind==='chatgpt'?'ChatGPT':'DeepSeek API',
    category:kind==='chatgpt'?'订阅':'API',
@@ -287,7 +298,7 @@ async function bind(kind,id,candidate) {
  const bindings=readFile(bindingsPath,{});
  bindings[id]={kind,signature:found.signature,unit:found.unit,metric:found.metric,label:found.label.slice(0,120)};
  writeFile(bindingsPath,bindings);
- return sample(kind,id,true);
+ return withAccountRefresh(kind,id,()=>sample(kind,id,true));
 }
 async function unbind(id) {
  safeId(id);
@@ -306,12 +317,16 @@ async function unbind(id) {
  }
  return true;
 }
+let pollInFlight=null;
 async function pollAll() {
+ if(pollInFlight)return pollInFlight;
+ pollInFlight=(async()=>{
  const bindings=readFile(bindingsPath,{});
  for(const [id,binding] of Object.entries(bindings)){
   const win=windows.get(sessionKey(binding.kind,id));
   if(!win||win.isDestroyed()||win.webContents.isLoadingMainFrame())continue;
   try{
+   await withAccountRefresh(binding.kind,id,async()=>{
    // Refresh live usage dashboards while the website window is hidden.
    // Without this, some SPA dashboards show a stale number indefinitely.
    // Never interrupt a site the user is actively interacting with.
@@ -339,8 +354,12 @@ async function pollAll() {
      await new Promise(r=>setTimeout(r,1800));
     }
    }
+   });
   }catch(err){notify({type:'stale',id,reason:String(err.message||'网页数据暂不可用').slice(0,160)})}
  }
+ })();
+ try{return await pollInFlight}
+ finally{pollInFlight=null}
 }
 function flushPersistentSessions(){
   for(const win of windows.values()){
@@ -366,7 +385,7 @@ function register({dir,onUpdate}){
  ipcMain.handle('quota:webOpen',(_e,kind,id)=>open(kind,id));
  ipcMain.handle('quota:webRead',(_e,kind,id)=>read(kind,id));
  ipcMain.handle('quota:webBind',(_e,kind,id,choice)=>bind(kind,id,choice));
- ipcMain.handle('quota:webSample',async(_e,kind,id)=>{
+ ipcMain.handle('quota:webSample',(_e,kind,id)=>withAccountRefresh(kind,id,async()=>{
   // A user-initiated Refresh must request the latest official usage page,
   // not only reread an outdated hidden SPA DOM.
   const win=windows.get(sessionKey(kind,id));
@@ -383,7 +402,7 @@ function register({dir,onUpdate}){
    await new Promise(resolve=>setTimeout(resolve,1200));
   }
   return sample(kind,id,true);
- });
+ }));
  ipcMain.handle('quota:webUnbind',(_e,id)=>unbind(id));
  ipcMain.handle('quota:webBindings',()=>{
   const all=readFile(bindingsPath,{});

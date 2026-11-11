@@ -1,4 +1,4 @@
-﻿'use strict'
+'use strict'
 const assert=require('node:assert/strict')
 const fs=require('node:fs')
 const path=require('node:path')
@@ -65,11 +65,34 @@ async function main(){
  await monitor.pollAll()
  assert(updates.some(x=>x.type==='stale'))
  assert.equal((await handlers.get('quota:history')(null,id)).length,2)
+ // A manual user refresh and two scheduled polls must share ONE website read.
+ visible='本周已使用\n49%\n账户余额\n¥26.80'
+ const browser=monitor._testWindows.get('chatgpt--'+id)
+ const originalRead=browser.webContents.executeJavaScriptInIsolatedWorld
+ let releaseRead,actualReads=0
+ const gate=new Promise(resolve=>{releaseRead=resolve})
+ browser.webContents.executeJavaScriptInIsolatedWorld=async(...args)=>{
+  actualReads++
+  await gate
+  return originalRead(...args)
+ }
+ const pending=[
+  monitor.pollAll(),monitor.pollAll(),
+  handlers.get('quota:webSample')(null,'chatgpt',id)
+ ]
+ await new Promise(r=>setTimeout(r,30))
+ assert.equal(actualReads,1,'concurrent manual/automatic refresh must share one official website read')
+ releaseRead()
+ await Promise.all(pending)
+ browser.webContents.executeJavaScriptInIsolatedWorld=originalRead
+ const finalHistory=await handlers.get('quota:history')(null,id)
+ assert.deepEqual(finalHistory.map(x=>x.value),[35,48,49])
+ assert.equal(updates.filter(x=>x.type==='snapshot'&&x.point.value===49).length,1,'one actual sample must not be duplicated')
  await handlers.get('quota:webUnbind')(null,id)
  assert(!(await handlers.get('quota:webBindings')())[id])
- assert.equal((await handlers.get('quota:history')(null,id)).length,2,'Historical data preserved on disconnect')
+ assert.equal((await handlers.get('quota:history')(null,id)).length,3,'Historical data preserved on disconnect')
  monitor.shutdown()
- console.log('PASS: isolated website, true 35->48 sample history, dedup, stale detection, safe disconnect; QA data only.')
+ console.log('PASS: isolated website, 35->48->49 sample history, dedup, overlapping manual/scheduled poll lock, stale detection; QA only.')
 }
 main().catch(err=>{monitor.shutdown();console.error(err);process.exitCode=1}).finally(()=>fs.rmSync(tmp,{recursive:true,force:true}))
 
