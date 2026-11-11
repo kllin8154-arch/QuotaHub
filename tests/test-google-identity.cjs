@@ -92,6 +92,25 @@ async function test(){
  assert.equal(restored.status().profile,null);
  assert(!fs.existsSync(path.join(dir,'google-identity.enc')));
  assert(fs.existsSync(path.join(dir,'google-oauth-client.json')),'Developer config stays after sign-out');
+ // Desktop app JSON import stores its client_secret encrypted, never plaintext.
+ const secret='synthetic-test-desktop-client-secret';
+ const localJSON=path.join(dir,'desktop-oauth-only-fixture.json');
+ fs.writeFileSync(localJSON,JSON.stringify({installed:{client_id:clientId,client_secret:secret}}));
+ const imported=restored.importClientJSONFile(localJSON);
+ assert.equal(imported.clientSecretConfigured,true);
+ assert.equal(imported.configured,true);
+ const onDisk=fs.readFileSync(path.join(dir,'google-oauth-client.json'),'utf8');
+ assert(!onDisk.includes(secret),'Desktop OAuth secret must not be plaintext on disk');
+ assert(onDisk.includes('clientSecretCiphertext'),'Encrypted client secret must persist');
+ const before=fetched.length;
+ const secondLogin=await restored.signIn();
+ assert(secondLogin.profile.emailVerified);
+ const secondPage=await receivedPage;
+ assert(secondPage.body.includes('登录验证成功'));
+ assert.equal(fetched.length,before+2);
+ restored.signOut();
+ // Remove the optional fixture secret to exercise a secretless Google failure.
+ fs.writeFileSync(path.join(dir,'google-oauth-client.json'),JSON.stringify({clientId}));
  // Regression: receiving a valid callback is NOT equivalent to successful login.
  const failed=createGoogleIdentity({dataDir:dir,safeStorage,shell,
    fetchImpl:async()=>{throw TypeError('fetch failed')},timeoutMs:3000});
@@ -103,5 +122,6 @@ async function test(){
  assert.equal(fs.existsSync(path.join(dir,'google-identity.enc')),false);
  console.log('GOOGLE_OAUTH_PKCE_LOOPBACK_IDENTITY_TEST_PASS');
  console.log('GOOGLE_OAUTH_CALLBACK_STATUS_AND_PROXY_FAILURE_TEST_PASS');
+ console.log('GOOGLE_OAUTH_ENCRYPTED_DESKTOP_JSON_IMPORT_TEST_PASS');
 }
 test().catch(error=>{console.error(error);process.exitCode=1}).finally(()=>fs.rmSync(dir,{recursive:true,force:true}));

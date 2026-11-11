@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('quotaBridge', Object.freeze({
   historyRecord: point => ipcRenderer.invoke('quota:historyRecord',point),
   identityStatus: () => ipcRenderer.invoke('identity:status'),
   googleConfigure: clientId => ipcRenderer.invoke('identity:configure',clientId),
+  googleImportOAuthJson: () => ipcRenderer.invoke('identity:importOAuthJson'),
   googleSignIn: () => ipcRenderer.invoke('identity:signIn'),
   googleSignOut: () => ipcRenderer.invoke('identity:signOut'),
   googleCancel: () => ipcRenderer.invoke('identity:cancel'),

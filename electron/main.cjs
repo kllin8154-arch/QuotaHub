@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell, screen, Menu, Tray, nativeImage, session } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, shell, screen, Menu, Tray, nativeImage, session, dialog } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const https = require('node:https');
@@ -22,6 +22,13 @@ function broadcastIdentity(status){
 ipcMain.handle('identity:status',()=>googleIdentity?.status()||{
  configured:false,secureStorage:false,busy:false,profile:null});
 ipcMain.handle('identity:configure',(_event,id)=>googleIdentity?.configure(id));
+ipcMain.handle('identity:importOAuthJson',async()=>{
+ const choice=await dialog.showOpenDialog({title:'导入 Google 桌面 OAuth 配置',
+  buttonLabel:'导入本机配置',properties:['openFile'],
+  filters:[{name:'Google OAuth JSON',extensions:['json']}]});
+ if(choice.canceled||!choice.filePaths?.[0])return googleIdentity?.status();
+ return googleIdentity?.importClientJSONFile(choice.filePaths[0]);
+});
 ipcMain.handle('identity:signIn',()=>googleIdentity?.signIn());
 ipcMain.handle('identity:signOut',()=>googleIdentity?.signOut());
 ipcMain.handle('identity:cancel',()=>googleIdentity?.cancel());

@@ -1,4 +1,4 @@
-export type GoogleIdentityState = {configured:boolean;secureStorage:boolean;busy:boolean;
+export type GoogleIdentityState = {configured:boolean;clientSecretConfigured?:boolean;secureStorage:boolean;busy:boolean;
   profile:{provider:'google';name:string;email:string;emailVerified:true;linkedAt:string;persisted:boolean}|null}
 export type ProviderKind = 'deepseek' | 'openai-api' | 'openrouter' | 'chatgpt' | 'claude' | 'gemini' | 'siliconflow' | 'qwen' | 'kimi' | 'zhipu' | 'cursor' | 'custom' | 'relay'
 export type Metric = 'balance' | 'usage' | 'spend'
@@ -19,6 +19,7 @@ export type Bridge = { connect:(kind:'deepseek'|'openai-api'|'openrouter'|'relay
  historyRecord?:(point:{id:string;value:number;metric:Metric;unit:string;source:'manual'|'api';limit?:number|null})=>Promise<boolean>;
  identityStatus?:()=>Promise<GoogleIdentityState>;
  googleConfigure?:(clientId:string)=>Promise<GoogleIdentityState>;
+ googleImportOAuthJson?:()=>Promise<GoogleIdentityState>;
  googleSignIn?:()=>Promise<GoogleIdentityState>;
  googleSignOut?:()=>Promise<GoogleIdentityState>;
  googleCancel?:()=>Promise<boolean>;

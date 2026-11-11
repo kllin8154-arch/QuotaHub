@@ -3,7 +3,7 @@ import { Check, CircleHelp, ExternalLink, LoaderCircle, LockKeyhole, Settings2, 
 import type { GoogleIdentityState } from './types'
 
 const googleHelp='https://console.cloud.google.com/auth/clients'
-const localState:GoogleIdentityState={configured:false,secureStorage:false,busy:false,profile:null}
+const localState:GoogleIdentityState={configured:false,clientSecretConfigured:false,secureStorage:false,busy:false,profile:null}
 function readableOAuthError(e:unknown){
  const raw=e instanceof Error?e.message:String(e)
  return raw.replace(/^Error invoking remote method ['\"][^'\"]+['\"]:\s*(?:Error:\s*)?/,'')
@@ -35,6 +35,15 @@ export default function IdentityPanel({open,onClose}:{open:boolean;onClose:()=>v
   try{
    const result=await window.quotaBridge.googleSignIn()
    setState(result)
+  }catch(e){setError(readableOAuthError(e))}
+  finally{setBusy(false)}
+ }
+ async function importJSON(){
+  if(!window.quotaBridge?.googleImportOAuthJson)return
+  setBusy(true);setError('')
+  try{
+   const result=await window.quotaBridge.googleImportOAuthJson()
+   setState(result);setClientId('');setShowSetup(false)
   }catch(e){setError(readableOAuthError(e))}
   finally{setBusy(false)}
  }
@@ -90,7 +99,11 @@ export default function IdentityPanel({open,onClose}:{open:boolean;onClose:()=>v
        <Settings2 size={16}/> 应用 OAuth 配置 <span>{showSetup?'收起':'展开'}</span>
       </button>
       {showSetup&&<div className="identity-setup-content">
-       <p>仅由应用发布者配置一次。Google Cloud 中创建 OAuth 客户端，类型选择<strong>桌面应用</strong>，仅请求基本身份权限。</p>
+       <p>仅由应用发布者配置一次。推荐导入 Google Cloud 下载的 <strong>Desktop app OAuth JSON</strong>，程序只在此设备加密保存客户端信息，原文件不会上传或复制到发布包。</p>
+       <button className="identity-google-button" disabled={busy||!state.secureStorage} onClick={()=>void importJSON()}>
+        从本机导入 Google OAuth JSON
+       </button>
+       <p>{state.clientSecretConfigured?'客户端配置已加密保存，可完成 Google 令牌兑换':'当前只配置了 Client ID；部分 Google 桌面客户端要求同时提供 client_secret。'}</p>
        <label htmlFor="google-client-id">Google OAuth Client ID</label>
        <input id="google-client-id" spellCheck={false} autoComplete="off" placeholder="xxxxxxxx-xxxxx.apps.googleusercontent.com"
         value={clientId} onChange={e=>setClientId(e.target.value)} />

@@ -26,13 +26,22 @@ function createGoogleIdentity(options){
  const configPath=path.join(dataDir,'google-oauth-client.json');
  const identityPath=path.join(dataDir,'google-identity.enc');
  let identity=null,pending=null;
- function getClientId(){
-  const env=process.env.QUOTAHUB_GOOGLE_CLIENT_ID?.trim();
-  if(validClientId(env))return env;
-  const value=safeJSON(fs.existsSync(configPath)?fs.readFileSync(configPath,'utf8'):'');
-  return validClientId(value?.clientId)?value.clientId.trim():null;
- }
  function isStorageReady(){return Boolean(safeStorage.isEncryptionAvailable())}
+ function getConfig(){
+  const file=safeJSON(fs.existsSync(configPath)?fs.readFileSync(configPath,'utf8'):'')||{};
+  const env=process.env.QUOTAHUB_GOOGLE_CLIENT_ID?.trim();
+  const id=validClientId(env)?env:validClientId(file.clientId)?file.clientId.trim():null;
+  let secret=null;
+  if(id && file.clientId===id && typeof file.clientSecretCiphertext==='string' &&
+     file.clientSecretCiphertext.length<8192 && isStorageReady()){
+   try{
+    secret=safeStorage.decryptString(Buffer.from(file.clientSecretCiphertext,'base64'));
+    if(typeof secret!=='string'||secret.length<4||secret.length>1024)secret=null;
+   }catch{secret=null}
+  }
+  return {clientId:id,clientSecret:secret};
+ }
+ function getClientId(){return getConfig().clientId}
  function load(){
   if(!isStorageReady()||!fs.existsSync(identityPath))return;
   try{
@@ -44,7 +53,9 @@ function createGoogleIdentity(options){
  }
  load();
  function status(){
-  return {configured:!!getClientId(),secureStorage:isStorageReady(),busy:!!pending,
+  const config=getConfig();
+  return {configured:!!config.clientId,clientSecretConfigured:!!config.clientSecret,
+          secureStorage:isStorageReady(),busy:!!pending,
           profile:identity?{provider:'google',name:identity.name,email:identity.email,
             emailVerified:true,linkedAt:identity.linkedAt,persisted:!!identity.persisted}:null};
  }
@@ -55,14 +66,34 @@ function createGoogleIdentity(options){
   fs.writeFileSync(tmp,encrypted,{mode:0o600});
   fs.renameSync(tmp,identityPath);
  }
- function configure(clientId){
+ function configure(clientId,clientSecret){
   if(pending)throw Error('Google 登录进行中，不能修改 OAuth 配置');
   if(!validClientId(clientId))throw Error('请填写 Google Cloud 创建的桌面应用 OAuth Client ID');
+  const cleaned=clientId.trim();
+  const current=safeJSON(fs.existsSync(configPath)?fs.readFileSync(configPath,'utf8'):'')||{};
+  const next={clientId:cleaned};
+  if(clientSecret!==undefined && clientSecret!==null){
+   if(!isStorageReady())throw Error('系统加密存储不可用，无法保存 OAuth 客户端配置');
+   if(typeof clientSecret!=='string'||clientSecret.trim().length<4||clientSecret.length>1024)
+    throw Error('OAuth 客户端 JSON 不含有效的 client_secret');
+   next.clientSecretCiphertext=safeStorage.encryptString(clientSecret.trim()).toString('base64');
+  }else if(current.clientId===cleaned && typeof current.clientSecretCiphertext==='string'){
+   next.clientSecretCiphertext=current.clientSecretCiphertext;
+  }
   const tmp=configPath+'.tmp';
-  fs.writeFileSync(tmp,JSON.stringify({clientId:clientId.trim()},null,2),{encoding:'utf8',mode:0o600});
+  fs.writeFileSync(tmp,JSON.stringify(next,null,2),{encoding:'utf8',mode:0o600});
   fs.renameSync(tmp,configPath);
   onChange?.(status());
   return status();
+ }
+ function importClientJSONFile(filePath){
+  if(typeof filePath!=='string'||filePath.length>2048||path.extname(filePath).toLowerCase()!=='.json')
+   throw Error('请选择 Google Cloud 下载的桌面 OAuth JSON 文件');
+  const stat=fs.statSync(filePath);
+  if(!stat.isFile()||stat.size>65536)throw Error('OAuth 配置文件大小或类型不正确');
+  const parsed=safeJSON(fs.readFileSync(filePath,'utf8'));
+  if(!parsed?.installed)throw Error('请选择类型为「桌面应用」的 Google OAuth JSON');
+  return configure(parsed.installed.client_id,parsed.installed.client_secret);
  }
  async function getJSON(url,init){
   const step=url===GOOGLE_TOKEN?'令牌兑换':'账号信息获取';
@@ -74,8 +105,12 @@ function createGoogleIdentity(options){
    throw Error('Google '+step+'网络请求失败（'+reason+'），请检查系统代理、网络及证书设置后重试');
   }
   if(!res||!res.ok){
-   if(url===GOOGLE_TOKEN && (res?.status===400||res?.status===401))
+   if(url===GOOGLE_TOKEN && (res?.status===400||res?.status===401)){
+    const payload=await res.json().catch(()=>({}));
+    if(/client_secret.*missing|missing.*client_secret/i.test(String(payload?.error_description||'')))
+     throw Error('Google 要求桌面客户端密钥。请在「应用 OAuth 配置」中导入原始 Google OAuth JSON 文件后重试');
     throw Error('Google 授权码兑换失败（HTTP '+res.status+'），请重新开始 Google 登录');
+   }
    throw Error('Google '+step+'失败（HTTP '+(res?.status||'unknown')+'）');
   }
   const length=Number(res.headers?.get?.('content-length')||0);
@@ -98,6 +133,8 @@ function createGoogleIdentity(options){
  async function exchangeCode(code,clientId,redirectUri,verifier){
   const params=new URLSearchParams({client_id:clientId,code,redirect_uri:redirectUri,
                                    grant_type:'authorization_code',code_verifier:verifier});
+  const secret=getConfig().clientId===clientId?getConfig().clientSecret:null;
+  if(secret)params.set('client_secret',secret);
   const token=await getJSON(GOOGLE_TOKEN,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:params.toString()});
   if(typeof token.access_token!=='string'||token.access_token.length<16)throw Error('Google 未返回有效的访问授权');
   const user=await getJSON(GOOGLE_USERINFO,{headers:{Authorization:'Bearer '+token.access_token}});
@@ -186,6 +223,6 @@ function createGoogleIdentity(options){
   finish(pending);
   return true;
  }
- return {status,configure,signIn,signOut,cancel,getClientId};
+ return {status,configure,importClientJSONFile,signIn,signOut,cancel,getClientId};
 }
 module.exports={createGoogleIdentity,validClientId,challengeFor,SCOPES};
