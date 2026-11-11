@@ -181,3 +181,11 @@
 @media(max-width:690px){
  .quota-refined .empty-onboarding{flex-direction:column;align-items:flex-start;gap:12px}
 }
+
+/* Sampling status has visual priority over a stale balance figure. */
+.quota-refined .provider-source-tag.source-error,
+.quota-refined .provider-source-tag.source-delayed{color:#f6bd91;font-weight:580}
+.quota-refined.tone-clear .provider-source-tag.source-error,
+.quota-refined.tone-clear .provider-source-tag.source-delayed{color:#99613a}
+.quota-refined .provider-source-tag.source-pending{color:var(--qh-subtle)}
+.quota-refined .status-with-dot{font-variant-numeric:tabular-nums}

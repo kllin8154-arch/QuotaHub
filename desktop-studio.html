@@ -207,6 +207,8 @@ body.runtime .widget.compact.mode-island{border-radius:27px!important}
 .compact-action:hover{background:#4a505e}
 .compact-help{font-size:10px;color:#818996;margin-top:8px;line-height:1.6}
 @media(max-width:760px){.widget.compact.mode-island{max-width:80vw}.compact-picks{grid-template-columns:repeat(2,1fr)}}
+.widget .w-row.is-stale .row-meta{color:#f1c291}
+.widget.clear .w-row.is-stale .row-meta{color:#815c38}
 </style>
 <style>
 body.runtime{background:transparent!important;overflow:hidden}
@@ -766,11 +768,21 @@ function applyNativeSettings(settings){
  syncWidgetControls();
 }
 
+let recentNativeAccounts=[];
+function nativeHealth(p,now=Date.now()){
+ if(!p.connected&&!p.webMonitored)return 'manual';
+ if(p.syncError)return 'error';
+ const last=Date.parse(p.updatedAt||'');
+ if(!Number.isFinite(last)||last>now+60000)return 'pending';
+ return now-last>300000?'delayed':'healthy';
+}
 function renderNativeAccounts(all) {
  if(!document.body.classList.contains('runtime'))return;
  const accounts=Array.isArray(all)?all:[];
- const connected=accounts.filter(x=>x&&(x.connected||x.webMonitored)).length;
- $('.w-sub').textContent=accounts.length+' 个账号 · '+connected+' 个实时连接';
+ recentNativeAccounts=accounts;
+ const connected=accounts.filter(p=>p&&nativeHealth(p)==='healthy').length;
+ const inactive=accounts.filter(p=>p&&['error','delayed'].includes(nativeHealth(p))).length;
+ $('.w-sub').textContent=accounts.length+' 个账号 · '+connected+' 个同步正常'+(inactive?' · '+inactive+' 个异常':'');
  const mini=$('.mini-copy small');
  if(mini)mini.textContent=accounts.length+' 个账号 · '+connected+' 已连接';
  const tile=$('.w-banner strong');
@@ -799,6 +811,10 @@ function renderNativeAccounts(all) {
  }
  for(const p of accounts.slice(0,5)){
   const row=document.createElement('div');row.className='w-row';
+  const health=nativeHealth(p);
+  if(health==='delayed'||health==='error')row.classList.add('is-stale');
+  if(p.syncError)row.title='采集暂停 · '+p.syncError.slice(0,160);
+  else if(health==='delayed')row.title='数据已超过 5 分钟未成功更新';
   const logo=document.createElement('div');logo.className='provider-icon';
   const kind=['chatgpt','openai-api'].includes(p.kind)?'openai':p.kind;
   if(kind==='relay'||kind==='custom'){
@@ -812,7 +828,8 @@ function renderNativeAccounts(all) {
   const name=document.createElement('div');name.className='row-name';name.textContent=p.name;
   const note=document.createElement('div');note.className='row-meta';
   note.textContent=(p.account||'个人账号')+' · '+(
-   p.webMonitored?'网页监测':p.connected?'实时同步':p.value===null?'等待自动读取':'手动记录');
+   health==='error'?'采集异常':health==='delayed'?'数据过期':health==='pending'?'等待首次同步':
+   health==='healthy'?'同步正常':p.value===null?'未配置':'手动记录');
   block.append(name,note);
   const amount=document.createElement('div');amount.className='row-value';
   const big=document.createElement('strong');
@@ -824,6 +841,7 @@ function renderNativeAccounts(all) {
    (p.metric==='balance'?'剩余使用比例':'已使用比例'):
    p.metric==='balance'?'剩余额度':p.metric==='spend'?'本月消费':'已使用额度';
   if(p.value!==null&&!['CNY','USD','%'].includes(p.unit))label.textContent+=' · '+p.unit;
+  if(p.value!==null&&(health==='error'||health==='delayed'))label.textContent+=' · 旧值';
   amount.append(big,label);row.append(logo,block,amount);
   list.append(row);
  }
@@ -899,6 +917,7 @@ if(qs.get('runtime')==='1'){
  window.quotaWidget?.getSettings?.().then(applyNativeSettings).catch(()=>{});
  window.quotaWidget?.onAccounts?.(renderNativeAccounts);
  window.quotaWidget?.getAccounts?.().then(renderNativeAccounts).catch(()=>renderNativeAccounts([]));
+ setInterval(()=>renderNativeAccounts(recentNativeAccounts),30000);
 
 }
 if(qs.get('env')==='mobile')setMode('mobile');

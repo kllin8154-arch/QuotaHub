@@ -11,6 +11,9 @@ const dataDir = process.env.AIQUOTA_DATA_DIR || path.join(app.getPath('userData'
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
 app.setAppUserModelId('com.agnovexa.one.desktop');
+// Same user-data profile must never have two writers (history, Chromium sessions).
+const primaryInstance = app.requestSingleInstanceLock();
+if(!primaryInstance) app.quit();
 const secretsPath = path.join(dataDir, 'secrets.json');
 let googleIdentity = null;
 let accountLinks = null;
@@ -60,7 +63,8 @@ function cleanWidgetAccounts(list) {
   metric:['balance','spend','usage'].includes(p.metric)?p.metric:'balance',
   connected:!!p.connected||!!p.webMonitored,
   webMonitored:!!p.webMonitored,source:['web','api','manual'].includes(p.source)?p.source:'manual',
-  updatedAt:typeof p.updatedAt==='string'?p.updatedAt.slice(0,40):''
+  updatedAt:typeof p.updatedAt==='string'?p.updatedAt.slice(0,40):'',
+  syncError:typeof (p.syncError||p.error)==='string'?String(p.syncError||p.error).slice(0,160):''
  }));
 }
 function getWidgetAccounts() {
@@ -220,18 +224,15 @@ function notifyQuota(payload){
   const account={
    id:p.id,name:p.name||'DeepSeek API',account:'',
    kind:p.kind,value:payload.point.value,unit:payload.point.unit,metric:payload.point.metric,
-   connected:true,webMonitored:true,source:'web',updatedAt:payload.point.at
+   connected:true,webMonitored:true,source:'web',updatedAt:payload.point.at,syncError:''
   };
   saveWidgetAccounts(list.some(x=>x.id===p.id)?
    list.map(x=>x.id===p.id?{...x,...account}:x):[...list,account]);
   // Only newly authorized provider sessions are automatically grouped under
   // the CURRENT verified Google identity; pre-existing sessions need explicit consent.
   // Explicit consent is required before grouping an existing provider with Google.
-  // Successful first account read completes the flow without requiring another click.
-  const dashboard=BrowserWindow.getAllWindows().find(w=>
-   !w.isDestroyed()&&!w.webContents.isDestroyed()&&w.webContents.getURL().includes('index.html'));
-  if(dashboard){dashboard.show();dashboard.focus()}
-  else createWindow();
+  // Do not unexpectedly launch a full-screen console when a widget receives a new sample.
+  // The dashboard is opened only by its own launcher/menu or user action.
  }
 
   if(payload.type==='snapshot' && payload.point && Number.isFinite(payload.point.value)){
@@ -241,9 +242,15 @@ function notifyQuota(payload){
       ...p,value:payload.point.value,limit:payload.point.limit,unit:payload.point.unit,
       metric:payload.point.metric,updatedAt:payload.point.at,
       connected:true,webMonitored:payload.point.source==='web'||p.webMonitored,
-      source:payload.point.source
+      source:payload.point.source,syncError:''
     }:p));
    }
+  }
+  if(payload.type==='stale' && typeof payload.id==='string'){
+   const list=getWidgetAccounts();
+   if(list.some(p=>p.id===payload.id))
+    saveWidgetAccounts(list.map(p=>p.id===payload.id?
+      {...p,syncError:String(payload.reason||'同步暂停').slice(0,160)}:p));
   }
   for(const win of BrowserWindow.getAllWindows()){
    if(!win.isDestroyed()&&!win.webContents.isDestroyed() && win.webContents.getURL().includes('index.html')){
@@ -318,9 +325,17 @@ ipcMain.handle('quota:openExternal',async(_,raw)=>{
  if (url.protocol!=='https:' || !allowedHosts.has(url.hostname)) throw new Error('不支持的官方地址');
  await shell.openExternal(url.href);
 });
+let dashboardWindow=null;
 function createWindow() {
+ if(dashboardWindow&&!dashboardWindow.isDestroyed()){
+  if(dashboardWindow.isMinimized())dashboardWindow.restore();
+  dashboardWindow.show();dashboardWindow.focus();
+  return dashboardWindow;
+ }
  const win=new BrowserWindow({width:1440,height:910,minWidth:880,minHeight:650,backgroundColor:'#08090d',title:'Agnovexa One',autoHideMenuBar:true,show:false,
   webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true}});
+ dashboardWindow=win;
+ win.on('closed',()=>{if(dashboardWindow===win)dashboardWindow=null});
  win.once('ready-to-show',()=>win.show());
  win.webContents.setWindowOpenHandler(({url})=>{try{const u=new URL(url);if(u.protocol==='https:' && allowedHosts.has(u.hostname)) shell.openExternal(url);}catch{}return {action:'deny'};});
  win.webContents.on('will-navigate',(event,url)=>{
@@ -330,6 +345,7 @@ function createWindow() {
  });
  if(!app.isPackaged && process.env.AIQUOTA_DEV==='1')win.loadURL('http://127.0.0.1:5173/');
  else win.loadFile(path.join(__dirname,'../dist/index.html'));
+ return win;
 }
 let gadget;
 let frameAdjustmentUntil=0;
@@ -684,7 +700,12 @@ ipcMain.handle('widget:getSettings',()=>({...widgetSettings}));
 ipcMain.handle('widget:toggle',()=>setCollapsed(!widgetSettings.collapsed,widgetSettings.collapseMode==='none'?'orb':undefined));
 ipcMain.handle('widget:setCollapseMode',(_,mode)=>setCollapseMode(mode));
 ipcMain.handle('widget:dashboard',()=>{createWindow();return true});
-app.whenReady().then(()=>{
+app.on('second-instance',(_event,argv)=>{
+ if(!primaryInstance)return;
+ if(argv.includes('--dashboard'))createWindow();
+ else ensureWidgetVisible();
+});
+if(primaryInstance)app.whenReady().then(()=>{
  // Chromium's network stack follows the Windows proxy and certificate settings.
  // Use a non-persistent, cookie-isolated session only for Google OAuth token/userinfo.
  const googleOAuthNetwork=session.fromPartition('agnovexa-one-google-oauth');
