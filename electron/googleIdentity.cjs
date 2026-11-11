@@ -65,16 +65,40 @@ function createGoogleIdentity(options){
   return status();
  }
  async function getJSON(url,init){
-  const res=await fetchImpl(url,{...init,redirect:'error',signal:AbortSignal.timeout(16000),cache:'no-store'});
-  if(!res||!res.ok)throw Error('Google 登录验证失败（HTTP '+(res?.status||'unknown')+'）');
+  const step=url===GOOGLE_TOKEN?'令牌兑换':'账号信息获取';
+  let res;
+  try{
+   res=await fetchImpl(url,{...init,redirect:'error',signal:AbortSignal.timeout(20000),cache:'no-store'});
+  }catch(e){
+   const reason=String(e?.cause?.code||e?.code||e?.name||'network').slice(0,36);
+   throw Error('Google '+step+'网络请求失败（'+reason+'），请检查系统代理、网络及证书设置后重试');
+  }
+  if(!res||!res.ok){
+   if(url===GOOGLE_TOKEN && (res?.status===400||res?.status===401))
+    throw Error('Google 授权码兑换失败（HTTP '+res.status+'），请重新开始 Google 登录');
+   throw Error('Google '+step+'失败（HTTP '+(res?.status||'unknown')+'）');
+  }
   const length=Number(res.headers?.get?.('content-length')||0);
   if(length>65536)throw Error('Google 响应超过安全限制');
-  return res.json();
+  try{return await res.json()}catch{throw Error('Google '+step+'返回的数据无法解析')}
+ }
+ function completeCallbackPage(p,success){
+  const res=p.response;
+  if(!res||res.writableEnded||res.destroyed)return;
+  const heading=success?'登录验证成功':'登录验证未完成';
+  const message=success?'可以关闭此页面并返回 Agnovexa One。':'请返回 Agnovexa One 查看失败原因，然后重新尝试登录。';
+  const ink=success?'#14624c':'#a33d45';
+  res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
+   'x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'no-referrer',
+   'content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; sandbox"});
+  res.end('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Agnovexa One · Google 登录</title>'+
+   '<style>body{font:15px system-ui;background:#f3f5f8;color:#273342;margin:0;padding:13vh 8%;text-align:center}'+
+   'h2{font-size:22px;color:'+ink+'}p{line-height:1.8}</style><h2>'+heading+'</h2><p>'+message+'</p></html>');
  }
  async function exchangeCode(code,clientId,redirectUri,verifier){
   const params=new URLSearchParams({client_id:clientId,code,redirect_uri:redirectUri,
                                    grant_type:'authorization_code',code_verifier:verifier});
-  const token=await getJSON(GOOGLE_TOKEN,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:params});
+  const token=await getJSON(GOOGLE_TOKEN,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded'},body:params.toString()});
   if(typeof token.access_token!=='string'||token.access_token.length<16)throw Error('Google 未返回有效的访问授权');
   const user=await getJSON(GOOGLE_USERINFO,{headers:{Authorization:'Bearer '+token.access_token}});
   if(typeof user.sub!=='string'||!user.sub||user.sub.length>127||typeof user.email!=='string'||
@@ -117,9 +141,9 @@ function createGoogleIdentity(options){
     }
     if(p.received){res.writeHead(409);res.end('Already received');return}
     p.received=true;
-    res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-store',
-      'x-content-type-options':'nosniff','content-security-policy':"default-src 'none'; style-src 'unsafe-inline'; sandbox"});
-    res.end('<!doctype html><html lang="zh"><meta charset="utf-8"><title>QuotaHub</title><style>body{font:15px system-ui;background:#f3f5f8;color:#273342;padding:12vh 8%;text-align:center}</style><h2>已返回 QuotaHub</h2><p>授权结果已接收，可以关闭本页面并返回应用。</p></html>');
+    // Do NOT report success before the token exchange, profile verification,
+    // and encrypted local save all succeed.
+    p.response=res;
     p.resolveCallback({code:u.searchParams.get('code'),error:u.searchParams.get('error')});
    });
    p.server=server;
@@ -142,7 +166,11 @@ function createGoogleIdentity(options){
    persist(profile);
    identity={...profile,persisted:true};
    onChange?.(status());
+   completeCallbackPage(p,true);
    return {...status(),busy:false};
+  }catch(error){
+   completeCallbackPage(p,false);
+   throw error;
   }finally{finish(p)}
  }
  function signOut(){

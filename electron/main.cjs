@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, safeStorage, shell, screen, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, safeStorage, shell, screen, Menu, Tray, nativeImage, session } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const https = require('node:https');
@@ -653,7 +653,13 @@ ipcMain.handle('widget:toggle',()=>setCollapsed(!widgetSettings.collapsed,widget
 ipcMain.handle('widget:setCollapseMode',(_,mode)=>setCollapseMode(mode));
 ipcMain.handle('widget:dashboard',()=>{createWindow();return true});
 app.whenReady().then(()=>{
- googleIdentity=createGoogleIdentity({dataDir,safeStorage,shell,onChange:broadcastIdentity});
+ // Chromium's network stack follows the Windows proxy and certificate settings.
+ // Use a non-persistent, cookie-isolated session only for Google OAuth token/userinfo.
+ const googleOAuthNetwork=session.fromPartition('agnovexa-one-google-oauth');
+ googleIdentity=createGoogleIdentity({
+  dataDir,safeStorage,shell,onChange:broadcastIdentity,
+  fetchImpl:(url,init)=>googleOAuthNetwork.fetch(url,{...init,credentials:'omit'})
+ });
  webQuota.register({dir:dataDir,onUpdate:notifyQuota});
  setInterval(()=>void refreshConnectedApiAccounts(),90000).unref?.();
  setupTray();

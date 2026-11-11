@@ -16,12 +16,12 @@ const safeStorage={
   return encoded.slice(14);
  }
 };
-let opened=null;
+let opened=null;let receivedPage=null;
 const fetched=[];
 async function mockFetch(url,init){
  fetched.push(url);
  if(url==='https://oauth2.googleapis.com/token'){
-  const params=init.body;
+  const params=new URLSearchParams(init.body);
   assert.equal(params.get('client_id'),clientId);
   assert.equal(params.get('grant_type'),'authorization_code');
   assert(params.get('code_verifier').length>42);
@@ -37,7 +37,7 @@ async function mockFetch(url,init){
  }
  throw Error('Unexpected request: '+url);
 }
-function localGet(url){return new Promise((resolve,reject)=>{const req=require('node:http').get(url,{agent:false},res=>{res.resume();res.on('end',()=>resolve({status:res.statusCode}))});req.on('error',reject)})}
+function localGet(url){return new Promise((resolve,reject)=>{const req=require('node:http').get(url,{agent:false},res=>{let body='';res.on('data',part=>body+=part.toString());res.on('end',()=>resolve({status:res.statusCode,body}))});req.on('error',reject)})}
 const shell={openExternal:async url=>{
  opened=new URL(url);
  assert.equal(opened.hostname,'accounts.google.com');
@@ -57,8 +57,7 @@ const shell={openExternal:async url=>{
  const good=new URL(uri);
  good.searchParams.set('state',opened.searchParams.get('state'));
  good.searchParams.set('code','SYNTHETIC-CODE-ONLY');
- const response=await localGet(good);
- assert.equal(response.status,200);
+ receivedPage=localGet(good);
 }};
 async function test(){
  const auth=createGoogleIdentity({dataDir:dir,safeStorage,shell,fetchImpl:mockFetch,timeoutMs:3000});
@@ -70,6 +69,11 @@ async function test(){
  auth.configure(clientId);
  assert.equal(auth.status().configured,true);
  const result=await auth.signIn();
+ const callbackPage=await receivedPage;
+ assert.equal(callbackPage.status,200);
+ assert(callbackPage.body.includes('登录验证成功'));
+ assert(callbackPage.body.includes('Agnovexa One'));
+ assert(!callbackPage.body.includes('QuotaHub'));
  assert.equal(result.busy,false);
  assert.equal(result.profile.name,'QuotaHub Test User');
  assert.equal(result.profile.email,'synthetic.user@example.test');
@@ -88,6 +92,16 @@ async function test(){
  assert.equal(restored.status().profile,null);
  assert(!fs.existsSync(path.join(dir,'google-identity.enc')));
  assert(fs.existsSync(path.join(dir,'google-oauth-client.json')),'Developer config stays after sign-out');
+ // Regression: receiving a valid callback is NOT equivalent to successful login.
+ const failed=createGoogleIdentity({dataDir:dir,safeStorage,shell,
+   fetchImpl:async()=>{throw TypeError('fetch failed')},timeoutMs:3000});
+ await assert.rejects(failed.signIn(),/Google 令牌兑换网络请求失败/);
+ const failurePage=await receivedPage;
+ assert(failurePage.body.includes('登录验证未完成'));
+ assert(!failurePage.body.includes('登录验证成功'));
+ assert.equal(failed.status().profile,null);
+ assert.equal(fs.existsSync(path.join(dir,'google-identity.enc')),false);
  console.log('GOOGLE_OAUTH_PKCE_LOOPBACK_IDENTITY_TEST_PASS');
+ console.log('GOOGLE_OAUTH_CALLBACK_STATUS_AND_PROXY_FAILURE_TEST_PASS');
 }
 test().catch(error=>{console.error(error);process.exitCode=1}).finally(()=>fs.rmSync(dir,{recursive:true,force:true}));

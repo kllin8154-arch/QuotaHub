@@ -4,6 +4,11 @@ import type { GoogleIdentityState } from './types'
 
 const googleHelp='https://console.cloud.google.com/auth/clients'
 const localState:GoogleIdentityState={configured:false,secureStorage:false,busy:false,profile:null}
+function readableOAuthError(e:unknown){
+ const raw=e instanceof Error?e.message:String(e)
+ return raw.replace(/^Error invoking remote method ['\"][^'\"]+['\"]:\s*(?:Error:\s*)?/,'')
+   .replace(/^Error:\s*/,'')
+}
 function showLink(url:string){
  if(window.quotaBridge?.openExternal)void window.quotaBridge.openExternal(url)
  else window.open(url,'_blank','noopener,noreferrer')
@@ -30,7 +35,7 @@ export default function IdentityPanel({open,onClose}:{open:boolean;onClose:()=>v
   try{
    const result=await window.quotaBridge.googleSignIn()
    setState(result)
-  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }catch(e){setError(readableOAuthError(e))}
   finally{setBusy(false)}
  }
  async function setup(){
@@ -39,14 +44,14 @@ export default function IdentityPanel({open,onClose}:{open:boolean;onClose:()=>v
   try{
    const result=await window.quotaBridge.googleConfigure(clientId.trim())
    setState(result);setClientId('');setShowSetup(false)
-  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  }catch(e){setError(readableOAuthError(e))}
   finally{setBusy(false)}
  }
  async function signOut(){
   if(!window.quotaBridge?.googleSignOut)return
   setBusy(true);setError('')
   try{setState(await window.quotaBridge.googleSignOut())}
-  catch(e){setError(e instanceof Error?e.message:String(e))}
+  catch(e){setError(readableOAuthError(e))}
   finally{setBusy(false)}
  }
  return <div className="identity-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>
@@ -74,7 +79,7 @@ export default function IdentityPanel({open,onClose}:{open:boolean;onClose:()=>v
        <div className="identity-subhead"><strong>使用 Google 登录</strong><p>快速确认个人身份，不会自动获得其他 AI 平台的授权或额度。</p></div>
        <button className="identity-google-button" disabled={!isDesktop||!state.configured||!state.secureStorage||busy} onClick={()=>void login()}>
         {busy?<LoaderCircle size={19} className="identity-spin"/>:<img src="./google-mark.svg" alt="" width="20" height="20"/>}
-        {busy?'等待浏览器授权…':state.configured?'使用 Google 账号继续':'Google OAuth 尚未配置'}
+        {busy?'正在验证 Google 登录…':state.configured?'使用 Google 账号继续':'Google OAuth 尚未配置'}
        </button>
        {!isDesktop && <p className="identity-help">Google 身份绑定目前仅在 Windows 桌面版启用；网页和 Android 仍可继续使用本地模式。</p>}
        {isDesktop&&!state.secureStorage && <p className="identity-help">此设备无法使用系统加密存储，因此暂时禁用 Google 登录。</p>}

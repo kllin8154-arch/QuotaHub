@@ -94,3 +94,5 @@ QuotaHub 是本地优先的 AI 平台额度看板，具有 Windows 玻璃态桌�
 用户账号、密钥、Cookie、浏览器登录会话以及额度记录均保存在用户本机，不包含在 GitHub 公开仓库。ChatGPT 和 DeepSeek 网页采集会随平台页面调整而变化，不能保证永久无障碍同步。
 
 A Google Desktop OAuth JSON file can be renamed, for example Agnovexa-One-Google-OAuth-Desktop.json. Configure only its client_id locally. Never commit client_secret JSON or user-data folders.
+
+Google OAuth network repair and callback behavior: see [GOOGLE-OAUTH.md](GOOGLE-OAUTH.md). The v0.11.1 desktop hotfix uses system proxy settings for Google verification.
