@@ -1,0 +1,238 @@
+/* QuotaHub v0.6 - readable account binding on Windows, Android, and Web.
+   Scoped modal refinements; dark custom popups avoid Windows native light menus. */
+.modal-backdrop .modal {
+  width: min(680px, calc(100vw - 28px));
+  background: linear-gradient(145deg, #252c39, #1b202c 33%, #151a24 100%);
+  border: 1px solid rgba(218,228,243,.27);
+  color: #f3f5fa;
+  font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+}
+.modal-backdrop .modal-header {
+  padding: 22px 27px 19px;
+  border-color: #3c4654;
+}
+.modal-backdrop .modal-header h2 {
+  font-size: 22px;
+  font-weight: 760;
+  line-height: 1.45;
+  color: #f4f6fa;
+  letter-spacing: -.25px;
+}
+.modal-backdrop .modal-header .section-kicker {
+  color: #b0bfd2;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .3px;
+}
+.modal-backdrop .modal-scroll {
+  padding: 20px 27px 24px;
+  scrollbar-color: #6e7b8e transparent;
+  scrollbar-width: thin;
+}
+.modal-backdrop .field {
+  color: #e4eaf3;
+  font-size: 13px;
+  font-weight: 675;
+  line-height: 1.48;
+  gap: 9px;
+  margin-bottom: 19px;
+  min-width: 0;
+}
+.modal-backdrop .field > span {
+  color: #e4eaf3;
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: .05px;
+}
+.modal-backdrop .field input,
+.modal-backdrop .field select,
+.modal-backdrop .qh-readable-select {
+  min-height: 46px;
+  height: 46px;
+  width: 100%;
+  border: 1px solid #526074;
+  background: rgba(48,56,72,.84);
+  border-radius: 11px;
+  color: #f5f7fb;
+  font-size: 14px;
+  font-weight: 575;
+  line-height: 1.4;
+  padding: 0 13px;
+  box-shadow: inset 0 1px rgba(255,255,255,.055);
+  outline: none;
+}
+.modal-backdrop .field input::placeholder {
+  color: #aeb9cb;
+  opacity: 1;
+  font-weight: 445;
+}
+.modal-backdrop .field input:focus,
+.modal-backdrop .field select:focus,
+.modal-backdrop .qh-readable-select:focus-visible,
+.modal-backdrop .qh-readable-select.is-open {
+  border-color: #ee969e;
+  box-shadow: 0 0 0 3px rgba(218,111,123,.18);
+}
+.modal-backdrop .field input:hover,
+.modal-backdrop .qh-readable-select:hover {
+  border-color: #758397;
+}
+.modal-backdrop .field input[type="date"] {
+  color-scheme: dark;
+}
+.modal-backdrop .field select {
+  color-scheme: dark;
+}
+.modal-backdrop .field select option,
+.modal-backdrop .field select optgroup {
+  color: #f3f6fb !important;
+  background-color: #273344 !important;
+  font-size: 14px;
+  font-weight: 550;
+}
+.modal-backdrop .qh-readable-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.modal-backdrop .qh-readable-select > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modal-backdrop .qh-readable-select > svg {
+  flex: none;
+  color: #cad5e3;
+  transition: transform .17s ease;
+}
+.modal-backdrop .qh-readable-select.is-open > svg {
+  transform: rotate(180deg);
+}
+.qh-readable-options {
+  z-index: 2147482000;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #73839b #263246;
+  padding: 5px;
+  border: 1px solid #64748b;
+  border-radius: 12px;
+  color: #f6f8fc;
+  background: #273244;
+  box-shadow: 0 18px 48px rgba(6,12,25,.65), inset 0 1px rgba(255,255,255,.085);
+  color-scheme: dark;
+  overscroll-behavior: contain;
+  font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+}
+.qh-readable-option {
+  min-height: 41px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  gap: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.4;
+  color: #f3f6fa;
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+}
+.qh-readable-option.is-active,
+.qh-readable-option:hover {
+  background: #43546b;
+  color: #fff;
+}
+.qh-readable-option.is-selected {
+  font-weight: 720;
+  color: #fff;
+}
+.qh-readable-option.is-selected > svg {
+  flex: none;
+  color: #f1a3ab;
+}
+.modal-backdrop .key-panel {
+  padding: 19px 18px 6px;
+  background: rgba(31,53,56,.65);
+  border: 1px solid #436365;
+  border-radius: 14px;
+}
+.modal-backdrop .key-panel-heading {
+  font-size: 14px;
+  color: #e9f7f3;
+  font-weight: 710;
+}
+.modal-backdrop .key-panel-heading span {
+  font-size: 12px;
+  font-weight: 660;
+  background: #284e45;
+  color: #b8f5d6;
+}
+.modal-backdrop .key-panel p {
+  font-size: 13px;
+  font-weight: 455;
+  line-height: 1.75;
+  color: #d4e5e2;
+  margin: 12px 0 15px;
+}
+.modal-backdrop .manual-note {
+  background: rgba(75,59,49,.37);
+  border: 1px solid #7e6555;
+  color: #f1e0cf;
+  font-size: 13px;
+  font-weight: 465;
+  line-height: 1.8;
+  padding: 15px 16px;
+}
+.modal-backdrop .manual-note svg {
+  color: #e3c99f;
+}
+.modal-backdrop .security-hint {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #f0d4a9;
+  font-weight: 510;
+}
+.modal-backdrop .modal-links button {
+  font-size: 13px;
+  color: #bbd5f9;
+  font-weight: 650;
+  padding: 6px 0;
+}
+.modal-backdrop .modal-footer {
+  padding: 16px 27px;
+  border-top: 1px solid #414958;
+  background: rgba(20,26,36,.92);
+}
+.modal-backdrop .modal-footer > span {
+  font-size: 12px;
+  font-weight: 560;
+  color: #b8decf;
+}
+.modal-backdrop .modal-footer .modal-cancel,
+.modal-backdrop .modal-footer .primary-button {
+  font-size: 14px;
+  min-height: 43px;
+}
+.modal-backdrop .error-hint {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #ffe1e1;
+}
+@media(max-width:680px) {
+  .modal-backdrop .modal-header {padding: 18px 19px 14px}
+  .modal-backdrop .modal-scroll {padding: 18px 19px 23px}
+  .modal-backdrop .modal-footer {padding: 13px 18px}
+  .modal-backdrop .modal-two {gap: 10px}
+}
+@media(max-width:420px) {
+  .modal-backdrop .modal-two {grid-template-columns: 1fr}
+  .modal-backdrop .modal {width: calc(100vw - 16px)}
+}

@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="icon" href="./quotahub-favicon-v2.svg" type="image/svg+xml"/><title>QuotaHub · 桌面组件视觉工作台</title>
+<style>
+:root{font-family:Inter,"Segoe UI","Microsoft YaHei",system-ui,sans-serif;color:#ebeff4;background:#0a0c11;font-synthesis:none;--op:.74;--unit:1}
+*{box-sizing:border-box}body{margin:0;overflow:hidden}button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible{outline:2px solid #a5b9ef;outline-offset:3px}
+button{border:0;color:inherit;background:none}h1,h2,h3,p{margin:0}
+.studio{height:100vh;display:grid;grid-template-columns:302px minmax(0,1fr);overflow:hidden}
+.controls{display:flex;flex-direction:column;min-height:0;gap:0;border-right:1px solid #30333d;background:linear-gradient(165deg,#181b23,#101218);z-index:9;overflow:auto}
+.control-top{padding:23px 22px 22px;border-bottom:1px solid #292b34}
+.wordmark{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:750;letter-spacing:-.25px}
+.brand-logo{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:#eff2f8;color:#242a36;box-shadow:0 3px 12px #0002;position:relative}
+.brand-logo svg{width:22px;height:22px}
+.brand-logo:after{content:"";width:5px;height:5px;border-radius:50%;background:#c35a61;position:absolute;right:4px;bottom:5px}
+.control-top p{color:#9195a3;font-size:11px;line-height:1.65;margin-top:14px}
+.control-group{padding:19px 21px 1px}.control-label{display:block;font-size:10px;font-weight:750;letter-spacing:1.1px;color:#858b99;margin-bottom:11px}
+.switches{display:flex;gap:5px;border-radius:12px;padding:4px;background:#252831;border:1px solid #343740}
+.switches button{flex:1;padding:9px 7px;border-radius:8px;font-size:12px;color:#a7abb7;white-space:nowrap}
+.switches button.active{color:#fff;background:#4b505d;box-shadow:0 3px 10px #0003}
+.choices{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.choice{min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;padding:12px 5px 10px;border-radius:12px;border:1px solid #363943;background:#1c1f28;color:#9297a5;transition:all .2s}
+.choice.active{border-color:#a5acbd;color:#f7f8fa;background:#363b47}
+.choice small{font-size:10px}.mockshape{height:30px;width:39px;border:1px solid #818998;border-radius:5px;display:flex;gap:3px;padding:5px}
+.mockshape i{display:block;background:#78808f;border-radius:2px;flex:1}
+.mockshape.card{flex-direction:column}.mockshape.rail{height:24px;margin:3px 0}.mockshape.side{width:22px;height:34px;flex-direction:column}
+.tints{display:flex;gap:10px}
+.tint{display:flex;align-items:center;gap:7px;font-size:10px;color:#c5c7cf}
+.tint i{display:block;width:22px;height:22px;border-radius:50%;border:2px solid #7d8089}
+.tint.active i{outline:2px solid #f2f3f7;outline-offset:2px}
+.tint[data-tint="smoke"] i{background:linear-gradient(130deg,#5a626e,#202934)}
+.tint[data-tint="clear"] i{background:linear-gradient(130deg,#d8e3ed,#788897)}
+.tint[data-tint="warm"] i{background:linear-gradient(130deg,#97877f,#3d393c)}
+.range-head{display:flex;align-items:center;justify-content:space-between;color:#aeb2be;font-size:11px;margin-bottom:10px}
+.range-head output{font-variant-numeric:tabular-nums;color:#edf0f5}
+input[type=range]{width:100%;accent-color:#a4a9b5}
+.hint{margin-top:9px;color:#787f8d;font-size:10px;line-height:1.6}
+.brand-choices{display:flex;gap:10px}
+.brand-choice{display:flex;gap:8px;align-items:center;border-radius:10px;background:#242730;border:1px solid #393c47;padding:9px 10px;font-size:11px}
+.brand-choice.active{background:#3c424e;border-color:#969dad}
+.brand-choice svg{width:23px;height:23px}
+.control-bottom{margin-top:auto;padding:19px 21px 23px}
+.control-bottom .notice{font-size:11px;line-height:1.7;color:#8d93a0;margin-bottom:15px;padding:13px 14px;border:1px solid #353842;background:#1c2028;border-radius:12px}
+.link-actions{display:flex;gap:9px}
+.link-actions a,.link-actions button{font-size:11px;text-align:center;text-decoration:none;padding:10px 8px;flex:1;background:#373b47;color:#e8ebf2;border-radius:9px;border:1px solid #4b5060}
+.link-actions a.primary{background:#e8ebf1;color:#1f2430;font-weight:700}
+.viewport{min-width:0;position:relative;overflow:hidden;background:#0c111d}
+.wallpaper{position:absolute;inset:0;overflow:hidden;background:linear-gradient(118deg,#1a263a 0%,#334a60 47%,#6a6e72 90%,#bd9890);transition:background .3s}
+.wallpaper:before{content:"";position:absolute;inset:-22%;background:radial-gradient(ellipse 45% 55% at 87% 70%,#b8d4c6bb,transparent 71%),radial-gradient(ellipse 38% 48% at 23% 28%,#98afbd99,transparent 72%),radial-gradient(ellipse 48% 66% at 48% 100%,#102642a6,transparent 70%);filter:blur(2px)}
+.wave{position:absolute;border-radius:48%;pointer-events:none}
+.wave.w1{width:130%;height:108%;left:14%;top:25%;transform:rotate(-18deg);background:linear-gradient(152deg,#ffffff12 0%,#e6e7db7b 27%,#a7a6a5a8 48%,#31455f99 75%,#122238bb 94%);box-shadow:inset 45px 22px 100px #f4f2ea37;filter:blur(2px)}
+.wave.w2{width:117%;height:80%;left:37%;top:48%;transform:rotate(-16deg);background:linear-gradient(122deg,#1b304a55,#54708377 45%,#0c172dca);filter:blur(8px)}
+.wallpaper:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#11192723,transparent 55%,#12192728)}
+.desktop-icons{position:absolute;left:26px;top:28px;display:grid;gap:26px;z-index:2;pointer-events:none}
+.desktop-icon{width:58px;text-align:center;color:#fff;text-shadow:0 2px 5px #0008;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:7px}
+.desktop-icon span{display:grid;place-items:center;width:34px;height:34px;filter:drop-shadow(0 2px 4px #0005)}
+.desktop-icon svg{width:31px;height:31px;stroke:white;fill:#d7e4f0a0;stroke-width:1.2}
+.stage-caption{position:absolute;top:29px;right:34px;z-index:4;font-size:11px;color:#e4e7e9e6;padding:8px 12px;border:1px solid #ffffff3b;border-radius:9px;background:#15192328;backdrop-filter:blur(12px)}
+.taskbar{position:absolute;left:0;right:0;bottom:0;height:51px;display:flex;align-items:center;justify-content:center;gap:18px;background:#14203155;border-top:1px solid #ffffff27;backdrop-filter:blur(22px);z-index:2}
+.taskbar span{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;font-size:15px;color:#f7f7fa}
+.taskbar .win{background:linear-gradient(135deg,#83bef9,#4784b9);color:white}
+.taskbar .finder{background:linear-gradient(135deg,#e5dfb1,#d1b582);color:#4f5a66}
+.taskbar .edge{background:linear-gradient(135deg,#6ad5c2,#268cbd);font-size:17px}
+.taskbar .app{background:#f6f6f6;color:#485169}
+.taskbar-time{position:absolute;right:18px;bottom:8px;z-index:3;color:#f5f5f5;font-size:10px;text-align:right;text-shadow:0 1px 2px #0005;line-height:1.6}
+.preview-help{position:absolute;left:35px;bottom:75px;z-index:3;font-size:11px;color:#fff7;padding:8px 12px;border-radius:8px;background:#14213130}
+.widget{--glass-bg:rgba(23,31,39,var(--op));--glass-border:rgba(255,255,255,.28);position:absolute;z-index:5;left:50%;top:46%;transform:translate(-50%,-50%) scale(var(--unit));border:1px solid var(--glass-border);border-radius:24px;overflow:hidden;color:#f7fafb;background:linear-gradient(147deg,rgba(255,255,255,.10),transparent 21%),var(--glass-bg);backdrop-filter:blur(25px) saturate(1.22);-webkit-backdrop-filter:blur(25px) saturate(1.22);box-shadow:0 16px 50px #08152435,inset 0 1px rgba(255,255,255,.22);transition:width .3s,height .3s,background .3s,border-radius .3s;will-change:left,top}
+.widget::before{content:"";pointer-events:none;position:absolute;top:0;left:12px;right:12px;height:1px;background:linear-gradient(90deg,transparent,#ffffff80 50%,transparent)}
+.widget.smoke{--glass-bg:rgba(26,33,42,var(--op))}
+.widget.clear{--glass-bg:rgba(203,216,227,var(--op));--glass-border:rgba(255,255,255,.65);color:#17232d;box-shadow:0 15px 40px #0a1d3a18,inset 0 1px #fffc}
+.widget.warm{--glass-bg:rgba(63,53,51,var(--op))}
+.widget.layout-card{width:378px;height:364px}
+.widget.layout-rail{width:660px;height:224px}
+.widget.layout-side{width:320px;height:588px}
+.widget-head{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 13px;gap:8px;cursor:grab;user-select:none;touch-action:none}
+.widget-head:active{cursor:grabbing}
+.widget-title{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:750}
+.widget .brand-logo{width:28px;height:28px;border-radius:9px;flex:none;box-shadow:none;background:rgba(255,255,255,.88)}
+.widget .brand-logo svg{height:20px;width:20px}
+.widget.clear .brand-logo{background:#1b2838;color:#f7fbff}
+.widget .brand-logo:after{width:4px;height:4px}
+.head-actions{display:flex;gap:4px;align-items:center}
+.head-actions button{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;color:inherit;opacity:.78}
+.head-actions button:hover{background:#ffffff26;opacity:1}
+.head-actions svg{height:16px;width:16px;stroke:currentColor;fill:none;stroke-width:1.6}
+.w-sub{font-size:10px;color:#d5dce5b6;padding:0 20px 11px}
+.widget.clear .w-sub,.widget.clear .row-meta,.widget.clear .w-foot{color:#1c34447d}
+.w-banner{display:flex;justify-content:space-between;align-items:baseline;margin:0 19px 12px;padding:12px 13px;border-radius:12px;border:1px solid #ffffff22;background:#ffffff13}
+.widget.clear .w-banner{border-color:#29465b1c;background:#ffffff48}
+.w-banner small{font-size:10px;color:inherit;opacity:.72}
+.w-banner strong{font-size:22px;letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+.w-banner strong small{font-size:10px;letter-spacing:0;margin-left:8px;font-weight:500}
+.w-list{display:flex;flex-direction:column;gap:0;padding:0 19px}
+.w-row{display:flex;align-items:center;gap:10px;min-width:0;padding:13px 0;border-top:1px solid #ffffff1c}
+.w-row:first-child{border-top:0}
+.provider-icon{width:31px;height:31px;flex:none;display:grid;place-items:center;background:#ffffffdf;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px #0002}
+.provider-icon img{object-fit:contain;width:21px;height:21px}
+.provider-icon.claude{background:#f1d8c9}
+.provider-icon.gemini{background:#e7e3fa}
+.provider-icon.openrouter{background:#dce4f0}
+.provider-icon.chatgpt{background:#eef4f1}
+.provider-icon.chatgpt .fallback{font-size:19px;font-weight:650;color:#326f63}
+.provider-icon.siliconflow .fallback{font-weight:750;color:#6e29f6}
+.row-name{font-size:12px;font-weight:670}
+.row-meta{font-size:10px;color:#d8e2eba3;margin-top:4px;white-space:nowrap}
+.row-value{text-align:right;margin-left:auto;white-space:nowrap}
+.row-value strong{font-size:15px;letter-spacing:-.2px;font-weight:730;display:block;font-variant-numeric:tabular-nums}
+.row-value small{font-size:10px;opacity:.65;display:block;margin-top:4px}
+.row-value .subtle-warning{color:#ffd49c}
+.widget.clear .subtle-warning{color:#9b5817}
+.w-foot{height:38px;border-top:1px solid #ffffff20;color:#d9e0e8ab;font-size:10px;display:flex;justify-content:space-between;align-items:center;padding:0 19px}
+.w-foot button{font-size:10px;color:inherit;border-radius:5px;padding:5px}
+.w-foot button:hover{background:#ffffff17}
+.widget.layout-card .w-list .w-row:nth-child(n+4){display:none}
+.widget.layout-card .w-banner{display:none}
+.widget.layout-card .w-row{padding:16px 0}
+.widget.layout-rail .w-sub,.widget.layout-rail .w-banner,.widget.layout-rail .w-row:nth-child(n+4){display:none}
+.widget.layout-rail .w-list{display:flex;flex-direction:row;gap:10px;padding:10px 19px 17px}
+.widget.layout-rail .w-row{flex:1;min-width:0;border:1px solid #ffffff1b;border-radius:14px;background:#ffffff0e;display:grid;grid-template-columns:27px minmax(0,1fr);gap:5px 9px;padding:13px}
+.widget.layout-rail .provider-icon{width:27px;height:27px;border-radius:8px}
+.widget.layout-rail .provider-icon img{width:19px;height:19px}
+.widget.layout-rail .row-value{text-align:left;margin:0;grid-column:1/3}
+.widget.layout-rail .row-value strong{font-size:18px}
+.widget.layout-rail .row-meta{display:none}
+.widget.layout-rail .row-value small{display:inline;margin-left:8px}
+.widget.layout-rail .w-foot{margin-top:-1px}
+.widget.layout-side .w-banner{display:flex}
+.widget.layout-side .w-row{padding:13px 0}
+.widget.layout-side .w-foot{position:absolute;bottom:0;left:0;right:0}
+.widget.layout-side .w-list .w-row:nth-child(n+5){display:none}
+.widget.layout-side .w-graph{display:flex}
+.w-graph{display:none;align-items:flex-end;gap:7px;height:94px;margin:8px 19px 17px;border-top:1px solid #ffffff20;padding-top:15px}
+.w-graph i{display:block;flex:1;background:linear-gradient(0deg,#92bad596,#d9e7f9b8);border-radius:4px 4px 0 0;max-height:70px}
+.widget.clear .w-graph i{background:linear-gradient(0deg,#617b9596,#c0d5e8)}
+.m-screen{display:none;position:absolute;inset:0;overflow:hidden;background:radial-gradient(ellipse at 80% 25%,#97b9bf,transparent 42%),linear-gradient(145deg,#233e56,#475e72 42%,#b4a59d 85%,#2e3a50);z-index:2}
+.m-phone{width:370px;height:min(790px,calc(100vh - 82px));border:8px solid #222a35;border-radius:44px;margin:24px auto;position:relative;overflow:hidden;box-shadow:0 27px 60px #0007;background:radial-gradient(ellipse at 60% 15%,#97aeba,transparent 48%),linear-gradient(138deg,#223b57,#738a8f 65%,#4e596d)}
+.m-phone:before{content:"";position:absolute;top:0;left:34%;width:32%;height:25px;border-radius:0 0 18px 18px;background:#1a202c;z-index:3}
+.m-time{position:absolute;top:80px;left:22px;font-size:57px;font-weight:250;letter-spacing:-4px;color:#f7f7ff;text-shadow:0 2px 5px #0002}
+.m-date{position:absolute;top:147px;left:26px;color:#e4ebf4;font-size:13px}
+.m-widget{position:absolute;top:245px;left:17px;right:17px;min-height:155px;border-radius:21px;background:rgba(236,242,246,.22);border:1px solid #ffffff65;backdrop-filter:blur(22px) saturate(1.3);box-shadow:0 10px 38px #172b4936,inset 0 1px #ffffff75;padding:16px 16px;color:#172b39}
+.m-widget-title{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:750;margin-bottom:17px}
+.m-widget-title span{font-size:10px;font-weight:500;color:#243b4c96}
+.m-rows{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.m-line{display:flex;gap:7px;align-items:center}
+.m-line .provider-icon{width:26px;height:26px;border-radius:8px}
+.m-line .provider-icon img{width:18px;height:18px}
+.m-name{font-size:10px;color:#293e4d}
+.m-value{font-size:15px;font-weight:800;margin-top:2px}
+.m-apps{position:absolute;bottom:42px;left:25px;right:25px;display:flex;justify-content:space-between}
+.m-app{width:48px;text-align:center;font-size:9px;color:#fff;text-shadow:0 1px 4px #0008}
+.m-app span{display:grid;place-items:center;margin-bottom:6px;width:47px;height:47px;border-radius:15px;font-size:22px;background:#ffffff9b;color:#2b4362;box-shadow:0 6px 12px #0002}
+.m-app:nth-child(2) span{background:#dce9bdcc;color:#53602c}.m-app:nth-child(3) span{background:#a4cbf3dd}.m-app:nth-child(4) span{background:#decabaed}
+.mobile-mode .wallpaper,.mobile-mode .desktop-icons,.mobile-mode .taskbar,.mobile-mode .taskbar-time,.mobile-mode .widget,.mobile-mode .preview-help{display:none}
+.mobile-mode .m-screen{display:block}
+.mobile-mode .stage-caption{z-index:4}
+.mobile-mode .m-widget{transition:all .25s}
+.mobile-mode .m-widget.compact{right:153px;min-height:155px}.mobile-mode .m-widget.compact .m-rows{grid-template-columns:1fr}.mobile-mode .m-widget.compact .m-line:nth-child(n+3){display:none}
+.mobile-mode .m-widget.wide{min-height:155px}
+.mobile-mode .m-widget.tall{min-height:286px}
+.mobile-mode .m-widget.tall .m-rows{grid-template-columns:1fr;gap:17px}
+.mobile-mode .m-widget.tall .m-value{font-size:18px}
+.mobile-mode .m-widget.tall .m-line .provider-icon{width:32px;height:32px}
+.preview-flag{position:absolute;top:11px;right:12px;font-size:9px;color:#fff8;border:1px solid #ffffff35;padding:5px 8px;border-radius:7px}
+@media(max-width:1120px){.studio{grid-template-columns:265px minmax(0,1fr)}.control-group{padding-left:14px;padding-right:14px}.control-top{padding-left:15px;padding-right:15px}.control-bottom{padding-left:14px;padding-right:14px}.widget.layout-rail{width:560px}.widget.layout-rail .w-row{padding:9px}.stage-caption{display:none}}
+@media(max-width:760px){body{overflow:auto}.studio{height:auto;display:flex;flex-direction:column;overflow:auto}.controls{overflow:visible;order:2}.viewport{height:740px;order:1;flex:none}.stage-caption{display:block;top:12px;right:12px}.widget.layout-rail{width:490px}.widget{--unit:.83}.desktop-icons{display:none}.control-top{padding:16px}.control-group{padding:13px 16px}.control-bottom{padding:15px}.m-phone{height:665px;max-width:calc(100vw - 25px)}.m-widget{top:228px}}
+
+/* Three distinct compact forms, independent of card/rail/sidebar layouts */
+.widget .compact-face{display:none}
+.widget.compact{overflow:hidden;transition:width .25s ease,height .25s ease,left .25s ease,top .25s ease,border-radius .25s ease;background:linear-gradient(150deg,rgba(255,255,255,.13),transparent 32%),var(--glass-bg);cursor:pointer}
+.widget.compact .widget-head,.widget.compact .w-sub,.widget.compact .w-banner,.widget.compact .w-list,.widget.compact .w-graph,.widget.compact .w-foot{display:none!important}
+.widget.compact .compact-face{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:0}
+.widget.compact .compact-toggle{color:inherit;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:100%;padding:0;border:0;outline-offset:-5px;font-size:11px;font-weight:650}
+.compact-face .brand-logo{flex-shrink:0;width:37px;height:37px;border-radius:12px}
+.compact-face .brand-logo svg{width:25px;height:25px}
+.compact-toggle .mini-copy{text-align:left;display:none}
+.compact-toggle .mini-copy strong{font-size:13px;font-weight:720;display:block}
+.compact-toggle .mini-copy small{font-size:10px;color:#d4dce4b9;font-weight:480;display:block;margin-top:5px}
+.compact-toggle .mini-chevron{display:none;color:#ced6e2c9;width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none}
+.widget.clear .mini-chevron{color:#2c4356a5}
+.widget.clear .mini-copy small{color:#344859a5}
+.widget.compact.mode-orb{width:84px!important;height:84px!important;border-radius:50%!important;border:1px solid #ffffff77;box-shadow:0 11px 40px #0e1e3748,inset 0 2px #ffffff36}
+.widget.compact.mode-orb .brand-logo{width:50px;height:50px;border-radius:50%;background:#f9faffeb}
+.widget.compact.mode-orb .brand-logo svg{width:31px;height:31px}
+.widget.compact.mode-edge{width:54px!important;height:128px!important;border-radius:20px!important}
+.widget.compact.mode-edge .compact-toggle{flex-direction:column;gap:9px}
+.widget.compact.mode-edge .brand-logo{width:30px;height:30px;border-radius:9px}
+.widget.compact.mode-edge .mini-chevron{display:block;transform:rotate(90deg)}
+.widget.compact.mode-edge .mini-copy{display:block;writing-mode:vertical-rl;letter-spacing:2px;font-size:9px}
+.widget.compact.mode-edge .mini-copy strong{font-size:9px;letter-spacing:1.5px}
+.widget.compact.mode-edge .mini-copy small{display:none}
+.widget.compact.mode-island{width:292px!important;height:72px!important;border-radius:28px!important}
+.widget.compact.mode-island .compact-toggle{padding:11px 17px}
+.widget.compact.mode-island .mini-copy{display:block;flex:1}
+.widget.compact.mode-island .mini-chevron{display:block;transform:rotate(90deg)}
+.widget.compact.mode-island .brand-logo{width:38px;height:38px}
+.compact-toggle:hover{background:rgba(255,255,255,.07)}
+body.runtime .widget.compact{width:calc(100vw - 10px)!important;height:calc(100vh - 10px)!important}
+body.runtime .widget.compact.mode-orb{border-radius:50%!important}
+body.runtime .widget.compact.mode-edge{border-radius:20px!important}
+body.runtime .widget.compact.mode-island{border-radius:27px!important}
+.compact-picks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.compact-pick{display:flex;align-items:center;gap:9px;padding:11px 9px;border:1px solid #393c46;border-radius:10px;background:#1f222b;color:#aaaebb;font-size:11px;text-align:left;min-width:0}
+.compact-pick.active{background:#343944;color:#f7f7f9;border-color:#9ba5b4}
+.compact-pick svg{width:19px;height:19px;flex:none;stroke:currentColor;stroke-width:1.65;fill:none}
+.compact-action{margin-top:11px;border:1px solid #5f6572;color:#ebeff4;background:#393e4a;font-size:11px;border-radius:10px;width:100%;padding:11px 12px;text-align:center}
+.compact-action:hover{background:#4a505e}
+.compact-help{font-size:10px;color:#818996;margin-top:8px;line-height:1.6}
+@media(max-width:760px){.widget.compact.mode-island{max-width:80vw}.compact-picks{grid-template-columns:repeat(2,1fr)}}
+</style>
+<style>
+body.runtime{background:transparent!important;overflow:hidden}
+body.runtime .studio{display:block;height:100vh;background:transparent}
+body.runtime .controls,body.runtime .wallpaper,body.runtime .desktop-icons,body.runtime .taskbar,body.runtime .taskbar-time,body.runtime .stage-caption,body.runtime .preview-help,body.runtime .m-screen{display:none!important}
+body.runtime .viewport{width:100vw;height:100vh;background:transparent;overflow:hidden}
+body.runtime .widget{position:absolute;left:0!important;top:0!important;transform:none!important;width:calc(100vw - 10px)!important;height:calc(100vh - 10px)!important;margin:5px;border-radius:21px;box-shadow:0 4px 12px #0003}
+body.runtime .widget-head{-webkit-app-region:drag;app-region:drag}
+body.runtime .head-actions button,body.runtime .w-foot button{-webkit-app-region:no-drag;app-region:no-drag}
+body.runtime .widget.layout-card .w-row{padding:10px 0}
+body.runtime .widget.layout-card .w-list .w-row:nth-child(n+4){display:none}
+body.runtime .widget.layout-side .w-row{padding:13px 0}
+body.runtime .widget.layout-rail .w-list{gap:8px}
+body.runtime .widget.layout-rail .w-row{padding:10px}
+
+/* QuotaHub v0.2 — shared slim glass widget / native window */
+.widget{
+  border-radius:23px;
+  border-color:rgba(245,249,255,.23);
+  background:linear-gradient(145deg,rgba(255,255,255,.085),rgba(255,255,255,.015) 34%),var(--glass-bg);
+  box-shadow:0 13px 42px rgba(7,19,34,.20),inset 0 1px rgba(255,255,255,.16);
+}
+.widget.clear{
+  border-color:rgba(255,255,255,.79);
+  box-shadow:0 12px 32px rgba(18,31,50,.15),inset 0 1px rgba(255,255,255,.72);
+}
+.widget-head{padding:16px 18px 11px}
+.widget-title{gap:9px;letter-spacing:-.2px}
+.widget .brand-logo{width:29px;height:29px;border-radius:10px}
+.widget .head-actions button{width:26px;height:26px;border-radius:9px}
+.widget .head-actions svg{width:15px;height:15px}
+.widget .head-actions button:focus-visible{outline-offset:-2px}
+.widget .w-sub{padding:0 19px 10px;line-height:1.5}
+.widget .w-row > :nth-child(2){min-width:0}
+.widget .row-name{font-size:12px;font-weight:690;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.widget .row-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:235px}
+.widget .w-list{min-width:0}
+.widget .w-foot{height:37px;flex:none}
+.widget .w-foot span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.widget.layout-card .w-row{padding:13px 0}
+.widget.layout-card .w-row:nth-child(n+4){display:none}
+.widget.layout-card .w-list{flex:1}
+.widget.layout-rail .w-list{gap:8px;padding:8px 17px 14px}
+.widget.layout-rail .w-row{grid-template-columns:27px minmax(0,1fr);gap:4px 9px;padding:10px 11px}
+.widget.layout-rail .row-name{font-size:12px}
+.widget.layout-rail .w-row > :nth-child(2){overflow:hidden}
+.widget.layout-side .w-row{padding:11px 0}
+.widget.layout-side .w-banner{margin-bottom:7px}
+/* Empty state has its own layout, never inherits the quota row grid. */
+.widget.is-empty:not(.compact){display:flex;flex-direction:column}
+.widget.is-empty .w-sub,.widget.is-empty .w-banner,.widget.is-empty .w-graph,.widget.is-empty .w-foot{display:none!important}
+.widget.is-empty .w-list{
+  display:flex!important;
+  flex:1 1 auto;
+  flex-direction:column!important;
+  width:100%;
+  min-height:0;
+  padding:8px 19px 20px!important;
+  gap:0!important;
+  justify-content:center;
+  align-items:center;
+}
+.w-empty{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  width:100%;
+  min-width:0;
+  padding:3px 2px;
+  text-align:center;
+  flex-direction:column;
+  white-space:normal;
+}
+.w-empty-icon{
+  width:39px;height:39px;border-radius:13px;
+  display:grid;place-items:center;
+  flex:none;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.085);
+  color:inherit;
+}
+.w-empty-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;opacity:.92}
+.w-empty-copy{display:flex;flex-direction:column;gap:5px;min-width:0}
+.w-empty-title{
+  font-size:13px;line-height:1.4;font-weight:700;letter-spacing:-.1px;
+  word-break:keep-all;overflow-wrap:normal;white-space:normal;
+}
+.w-empty-description{font-size:10px;line-height:1.6;opacity:.60;word-break:keep-all}
+.w-empty-button{
+  border:1px solid rgba(255,255,255,.30);
+  background:rgba(249,251,255,.14);
+  color:inherit;
+  padding:8px 14px;border-radius:10px;
+  font-size:11px;font-weight:680;white-space:nowrap;
+  transition:background .18s,border-color .18s;
+}
+.w-empty-button:hover{background:rgba(249,251,255,.22);border-color:rgba(255,255,255,.5)}
+.widget.clear .w-empty-icon{background:rgba(255,255,255,.44);border-color:rgba(50,70,90,.12)}
+.widget.clear .w-empty-button{background:#ffffff84;border-color:rgba(53,70,89,.23)}
+.widget.layout-rail.is-empty .w-list{
+  flex-direction:row!important;
+  align-items:center;
+  padding:0 18px 13px!important;
+}
+.widget.layout-rail.is-empty .w-empty{
+  display:grid;grid-template-columns:39px minmax(0,1fr) auto;
+  align-items:center;text-align:left;gap:13px;
+  padding:8px 5px;
+}
+.widget.layout-rail.is-empty .w-empty-copy{gap:3px}
+.widget.layout-rail.is-empty .w-empty-title{font-size:13px}
+.widget.layout-rail.is-empty .w-empty-description{font-size:10px}
+.widget.layout-rail.is-empty .w-empty-button{padding:8px 13px}
+.widget.layout-side.is-empty .w-list{padding:22px 18px!important}
+.widget.layout-side.is-empty .w-empty{gap:14px}
+.widget.layout-side.is-empty .w-empty-icon{width:48px;height:48px;border-radius:15px}
+.widget.layout-side.is-empty .w-empty-icon svg{width:23px;height:23px}
+.widget.layout-side.is-empty .w-empty-title{font-size:14px}
+/* Compact states retain the exact same glass treatment. */
+.widget.compact{box-shadow:0 11px 29px rgba(8,20,35,.18),inset 0 1px rgba(255,255,255,.21)}
+.widget.compact .compact-toggle{touch-action:manipulation}
+.widget.compact.mode-edge .mini-copy{writing-mode:vertical-rl;text-orientation:mixed}
+.widget.compact.mode-edge{border-radius:20px}
+.widget.compact.mode-island{border-radius:25px}
+.widget.compact.mode-orb{border-radius:50%}
+/* Lightweight appearance popover, also works in real frameless widget. */
+.widget-settings{
+  display:none;
+  position:absolute;
+  z-index:80;
+  top:53px;right:11px;
+  width:min(302px,calc(100% - 22px));
+  max-height:calc(100% - 63px);
+  overflow:auto;
+  padding:12px 14px 13px;
+  border-radius:16px;
+  color:#f3f5f8;
+  border:1px solid rgba(255,255,255,.25);
+  background:rgba(38,47,59,.96);
+  -webkit-backdrop-filter:blur(25px);backdrop-filter:blur(25px);
+  box-shadow:0 15px 32px #060f1c63;
+}
+.widget.clear .widget-settings{color:#23374a;background:rgba(230,237,244,.96);border-color:rgba(255,255,255,.88)}
+.widget.warm .widget-settings{background:rgba(65,55,58,.96)}
+.widget.settings-open:not(.compact) .widget-settings{display:block}
+.widget.settings-open .w-list,.widget.settings-open .w-sub,.widget.settings-open .w-banner,.widget.settings-open .w-foot{filter:blur(1px);opacity:.35}
+.widget-settings-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-size:12px}
+.widget-settings-head button{display:grid;place-items:center;width:23px;height:23px;border-radius:7px}
+.widget-settings-head button:hover{background:#ffffff22}
+.widget-settings-head svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6}
+.widget-settings-section{display:flex;align-items:center;gap:10px;margin-top:11px;font-size:11px}
+.widget-settings-section>span,.widget-settings-section>label{width:52px;flex:none;opacity:.78}
+.widget-settings-tints{display:flex;gap:5px;flex:1}
+.widget-settings-tints button{
+  display:flex;align-items:center;gap:4px;
+  padding:7px 6px;border:1px solid rgba(255,255,255,.17);
+  border-radius:8px;background:rgba(255,255,255,.07);font-size:10px
+}
+.widget-settings-tints button.active,.widget-settings-layouts button.active{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.22)}
+.widget-settings-tints i{display:block;width:11px;height:11px;border-radius:50%;border:1px solid #ffffff76}
+.widget-settings-tints .smoke{background:#586775}
+.widget-settings-tints .clear{background:#d7e3ec}
+.widget-settings-tints .warm{background:#96817f}
+.widget-settings-opacity input{flex:1;width:65px;min-width:30px;accent-color:#d2dce5}
+.widget-settings-opacity output{font-size:10px;width:31px;text-align:right}
+.widget-settings-layouts{display:flex;flex:1;gap:5px}
+.widget-settings-layouts button{flex:1;padding:8px 5px;border-radius:8px;font-size:10px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08)}
+body.runtime .widget.smoke{--glass-bg:rgba(40,52,65,var(--op))}
+body.runtime .widget{margin:2px;width:calc(100vw - 4px)!important;height:calc(100vh - 4px)!important;border-radius:23px}
+body.runtime .widget.compact.mode-orb{border-radius:50%!important}
+body.runtime .widget.compact.mode-edge{border-radius:19px!important}
+body.runtime .widget.compact.mode-island{border-radius:25px!important}
+body.runtime .widget-head{padding-top:15px}
+body.runtime .widget.is-empty .w-empty{width:100%}
+body.runtime .widget.layout-rail .w-list .w-row{padding:9px}
+body.runtime .widget.settings-open .widget-settings{max-height:calc(100% - 61px)}
+@media (prefers-reduced-motion:reduce){
+  .widget,.widget.compact,.w-empty-button{transition:none}
+}
+
+/* Real native desktop widget: transparent document and actual per-pixel alpha.
+   Browser preview retains the composited wallpaper blur. */
+html:has(body.runtime),html:has(body.runtime) body,
+body.runtime .studio,body.runtime .viewport{
+  background:transparent!important;
+  background-color:transparent!important;
+}
+body.runtime::before,body.runtime::after,
+html:has(body.runtime)::before,html:has(body.runtime)::after{display:none!important}
+body.runtime .widget{
+  margin:0!important;
+  width:100vw!important;
+  height:100vh!important;
+  border-radius:20px!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.09),transparent 48%),
+             var(--glass-bg)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.12)!important;
+  overflow:hidden!important;
+}
+body.runtime .widget.smoke{--glass-bg:rgba(43,54,69,var(--op))}
+body.runtime .widget.clear{--glass-bg:rgba(197,214,229,var(--op));border-color:rgba(255,255,255,.64)!important}
+body.runtime .widget.warm{--glass-bg:rgba(93,77,78,var(--op))}
+body.runtime .widget.compact.mode-orb{border-radius:50%!important}
+body.runtime .widget.compact.mode-edge{border-radius:16px!important}
+body.runtime .widget.compact.mode-island{border-radius:25px!important}
+body.runtime .widget.is-empty .w-empty{padding:0!important}
+body.runtime .widget.layout-card.is-empty .w-list{padding:4px 20px 17px!important}
+body.runtime .widget.layout-side.is-empty .w-list{padding:16px 17px!important}
+body.runtime .widget.layout-rail.is-empty .w-list{padding:0 19px 8px!important}
+body.runtime .widget.is-empty .w-empty-copy{min-width:0}
+body.runtime .widget.is-empty .w-empty-title{font-size:13px;white-space:nowrap}
+body.runtime .widget-settings{
+  background:rgba(43,53,67,.97)!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  border:1px solid rgba(255,255,255,.30);
+}
+body.runtime .widget.clear .widget-settings{background:rgba(226,238,247,.98)!important;color:#223246}
+body.runtime .widget.warm .widget-settings{background:rgba(79,68,69,.98)!important}
+.widget.is-empty .w-list{position:relative;z-index:1}
+</style>
+<style>
+
+/* QuotaHub compact isolation v0.3 — prevent the empty state from escaping. */
+.widget.compact .widget-head,
+.widget.compact .w-sub,
+.widget.compact .w-banner,
+.widget.compact .w-list,
+.widget.compact .w-graph,
+.widget.compact .w-foot,
+.widget.compact .widget-settings,
+.widget.is-empty.compact .w-list,
+.widget.is-empty.compact .w-empty,
+.widget.is-empty.compact .w-empty-button{
+ display:none!important;visibility:hidden!important;pointer-events:none!important;
+}
+.widget.compact .compact-face,.widget.is-empty.compact .compact-face{
+ display:flex!important;visibility:visible!important;position:absolute!important;
+ inset:0!important;z-index:30!important;overflow:hidden!important;
+ align-items:center!important;justify-content:center!important;
+}
+.widget.compact .compact-toggle{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;
+ overflow:hidden!important;padding:0!important;cursor:pointer!important;
+}
+.widget.compact.mode-orb,.widget.is-empty.compact.mode-orb{
+ width:68px!important;height:68px!important;border-radius:50%!important;
+}
+.widget.compact.mode-orb .mini-copy,.widget.compact.mode-orb .mini-chevron{display:none!important}
+.widget.compact.mode-orb .brand-logo{
+ width:43px!important;height:43px!important;border-radius:50%!important;
+ margin:0!important;background:rgba(246,249,252,.94)!important;
+}
+.widget.compact.mode-orb .brand-logo svg{width:27px!important;height:27px!important}
+.widget.compact.mode-edge,.widget.is-empty.compact.mode-edge{
+ width:44px!important;height:108px!important;border-radius:16px!important;
+}
+.widget.compact.mode-edge .mini-copy{display:none!important}
+.widget.compact.mode-edge .mini-chevron{
+ display:block!important;width:13px!important;height:13px!important;transform:rotate(90deg)!important;
+}
+.widget.compact.mode-edge .compact-toggle{flex-direction:column!important;gap:6px!important}
+.widget.compact.mode-edge .brand-logo{width:29px!important;height:29px!important;border-radius:9px!important}
+.widget.compact.mode-edge .brand-logo svg{width:22px!important;height:22px!important}
+.widget.compact.mode-island,.widget.is-empty.compact.mode-island{
+ width:244px!important;height:66px!important;border-radius:26px!important;
+}
+.widget.compact.mode-island .compact-toggle{
+ flex-direction:row!important;justify-content:flex-start!important;gap:10px!important;
+ padding:10px 12px!important;
+}
+.widget.compact.mode-island .brand-logo{width:37px!important;height:37px!important;border-radius:12px!important}
+.widget.compact.mode-island .mini-copy{
+ display:block!important;flex:1!important;min-width:0!important;
+ text-align:left!important;overflow:hidden!important;
+}
+.widget.compact.mode-island .mini-copy strong,
+.widget.compact.mode-island .mini-copy small{
+ display:block!important;overflow:hidden!important;text-overflow:ellipsis!important;
+ white-space:nowrap!important;writing-mode:horizontal-tb!important;letter-spacing:normal!important;
+}
+.widget.compact.mode-island .mini-copy strong{font-size:12px!important}
+.widget.compact.mode-island .mini-copy small{font-size:10px!important}
+.widget.compact.mode-island .mini-chevron{display:none!important}
+body.runtime .widget.compact.mode-orb,
+body.runtime .widget.compact.mode-edge,
+body.runtime .widget.compact.mode-island{
+ width:100vw!important;height:100vh!important;margin:0!important;
+}
+body.runtime .widget.compact.mode-orb{border-radius:50%!important}
+body.runtime .widget.compact.mode-edge{border-radius:16px!important}
+body.runtime .widget.compact.mode-island{border-radius:26px!important}
+.widget .head-actions #widgetPin.active{
+ color:#f3a7b0!important;opacity:1!important;
+ background:rgba(232,112,126,.23)!important;
+}
+.widget.clear .head-actions #widgetPin.active{color:#b34c5b!important}
+
+<style>
+body.runtime #widgetCollapse{-webkit-app-region:no-drag;cursor:pointer}
+</style>
+
+<style>
+/* Native widget final surface: measured frame, no dummy chart, clear foreground. */
+body.runtime .widget{background:rgba(28,37,49,var(--op))!important;
+ border:1px solid rgba(223,235,248,.33)!important;
+ box-shadow:inset 0 1px rgba(255,255,255,.16)!important;
+ display:flex;flex-direction:column;
+}
+body.runtime .widget.clear{background:rgba(206,219,231,var(--op))!important;color:#1b2a3a}
+body.runtime .widget.warm{background:rgba(73,64,66,var(--op))!important}
+body.runtime .widget:not(.compact) .w-graph{display:none!important}
+body.runtime .widget:not(.compact) .w-list{flex:1 1 auto;min-height:0;overflow:auto}
+body.runtime .widget:not(.compact) .w-row{padding:10px 0}
+body.runtime .widget:not(.compact) .w-banner{margin-bottom:5px}
+body.runtime .widget:not(.compact) .w-foot{position:static!important;margin-top:auto;flex:none}
+body.runtime .widget .row-meta,body.runtime .widget .w-sub,body.runtime .widget .w-foot{opacity:1;color:#ccd7e5}
+body.runtime .widget .row-name{font-size:12.5px}
+body.runtime .widget .row-value small{color:#d3dfec;opacity:.91}
+body.runtime .widget.clear .row-meta,body.runtime .widget.clear .w-sub,
+body.runtime .widget.clear .w-foot,body.runtime .widget.clear .row-value small{color:#304253}
+.widget-resize-grip{display:none}
+body.runtime .widget:not(.compact) .widget-resize-grip{
+ display:grid;position:absolute;bottom:2px;right:2px;z-index:19;
+ place-items:center;width:25px;height:25px;cursor:nwse-resize;
+ touch-action:none;color:rgba(226,238,248,.8);background:transparent;
+ -webkit-app-region:no-drag;app-region:no-drag;
+}
+.widget-resize-grip svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.4}
+body.runtime .widget.clear .widget-resize-grip{color:#32485d}
+body.runtime .widget.settings-open .widget-resize-grip{display:none}
+</style>
+
+</head>
+<body>
+<div class="studio">
+<aside class="controls">
+  <div class="control-top"><div class="wordmark"><span class="brand-logo"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7.5h3v9H5zM10.5 4h3v12.5h-3zM16 9h3v7.5h-3z" fill="currentColor"/></svg></span>QuotaHub <span style="font-size:10px;color:#747b89;font-weight:450">视觉工作台</span></div><p>实时切换组件尺寸、透明程度与品牌标识。右侧是模拟桌面，不是传统应用窗口。</p></div>
+  <div class="control-group"><div class="control-label">展示环境</div><div class="switches"><button data-env="desktop" class="active">Windows 桌面</button><button data-env="mobile">手机桌面</button></div></div>
+  <div class="control-group"><div class="control-label" id="layoutLabel">组件布局</div><div class="choices">
+   <button class="choice active" data-layout="card"><span class="mockshape card"><i></i><i></i><i></i></span><small>卡片</small></button>
+   <button class="choice" data-layout="rail"><span class="mockshape rail"><i></i><i></i><i></i></span><small>横条</small></button>
+   <button class="choice" data-layout="side"><span class="mockshape side"><i></i><i></i><i></i></span><small>侧栏</small></button>
+  </div></div>
+  <div class="control-group"><div class="control-label">自由收纳 · 展示效果</div>
+  <div class="compact-picks">
+    <button class="compact-pick" data-compact-mode="none"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="4"/><path d="M7 9h10M7 13h7"/></svg>保持展开</button>
+    <button class="compact-pick active" data-compact-mode="edge"><svg viewBox="0 0 24 24"><path d="M20 2v20M7 5h10v14H7zM11 9l-3 3 3 3"/></svg>贴边收缩</button>
+    <button class="compact-pick" data-compact-mode="orb"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>悬浮球</button>
+    <button class="compact-pick" data-compact-mode="island"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="7" cy="12" r="2"/></svg>灵动岛</button>
+  </div>
+  <button id="compactAction" class="compact-action">收起组件 · 预览</button>
+  <div class="compact-help" id="compactHelp">选择贴边模式后，将组件拖到左右边缘会自动缩成标签；也可点击上面的按钮体验。</div>
+</div>
+<div class="control-group"><div class="control-label">玻璃颜色</div><div class="tints">
+    <button class="tint active" data-tint="smoke"><i></i>烟灰</button><button class="tint" data-tint="clear"><i></i>冰白</button><button class="tint" data-tint="warm"><i></i>暖灰</button>
+  </div></div>
+  <div class="control-group"><div class="range-head"><span>面板不透明度</span><output id="opacityOutput">74%</output></div><input id="opacity" type="range" min="25" max="95" value="74"/><div class="hint">仅演示视觉透明度，独立桌面小组件的真实背景模糊程度取决于操作系统。</div></div>
+  <div class="control-group"><div class="control-label">品牌图标方向</div><div class="brand-choices">
+    <button class="brand-choice active" data-logo="bars"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="4" height="10" rx="2" fill="currentColor"/><rect x="10" y="4" width="4" height="16" rx="2" fill="currentColor"/><rect x="16" y="8" width="4" height="12" rx="2" fill="currentColor"/></svg>数据柱</button>
+    <button class="brand-choice" data-logo="ring"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="3"/><path d="M12 4a8 8 0 018 8" stroke="#c35a61" stroke-width="3"/></svg>额度环</button>
+    <button class="brand-choice" data-logo="layers"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5ZM4 12l8 4.5 8-4.5M4 16.5 12 21l8-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>叠层</button>
+  </div></div>
+  <div class="control-bottom"><div class="notice">当前数值均为 <b>演示数据</b>。设计原则：简约、低对比度、薄玻璃、不堆叠营销文案。平台图标优先用各自品牌标识。</div><div class="link-actions"><a class="primary" href="/?demo=1" target="_blank">打开完整看板</a><button id="resetPos">复位组件</button></div></div>
+</aside>
+<main class="viewport" id="viewport">
+  <div class="wallpaper"><div class="wave w1"></div><div class="wave w2"></div></div>
+  <div class="desktop-icons">
+    <div class="desktop-icon"><span><svg viewBox="0 0 32 32"><rect x="3" y="5" width="26" height="17" rx="2"/><path d="M12 26h8M16 22v4"/></svg></span>此电脑</div>
+    <div class="desktop-icon"><span><svg viewBox="0 0 32 32"><path d="M8 7h16l-2 19H10zM5 7h22M12 5h8"/></svg></span>回收站</div>
+    <div class="desktop-icon"><span><svg viewBox="0 0 32 32"><path d="M3 9h12l3 4h11v13H3z"/></svg></span>工作文件</div>
+  </div>
+  <div class="stage-caption">拖动组件顶部可调整位置 · 预览数据</div>
+  <section class="widget smoke layout-card" id="widget" aria-label="桌面额度组件">
+    <header class="widget-head" id="dragHandle"><div class="widget-title"><span class="brand-logo" id="widgetLogo"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="4" height="10" rx="2" fill="currentColor"/><rect x="10" y="4" width="4" height="16" rx="2" fill="currentColor"/><rect x="16" y="8" width="4" height="12" rx="2" fill="currentColor"/></svg></span><span>QuotaHub</span></div><div class="head-actions"><button id="widgetRefresh" title="刷新演示数据"><svg viewBox="0 0 24 24"><path d="M19 8a8 8 0 10.3 7M19 4v4h-4"/></svg></button><button id="widgetMode" title="切换布局"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M11 10v9"/></svg></button><button id="widgetAppearance" title="玻璃外观与布局" aria-label="调整玻璃外观"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M9 4v6M15 14v6"/></svg></button><button id="widgetPin" title="始终置顶" aria-label="始终置顶" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l1 7 3 3v2H4v-2l3-3 1-7M12 15v6"/></svg></button><button id="widgetCollapse" title="收起预览" aria-label="收纳组件"><svg viewBox="0 0 24 24"><path d="M5 16h14l-1 5H6l-1-5M12 3v11m-4-4 4 4 4-4"/></svg></button></div></header>
+    <div class="w-sub">3 个账号 · 最近同步 5 分钟前</div>
+    <div class="w-banner"><small>已绑定账号</small><strong>03 <small>个账号</small></strong></div>
+    <div class="w-list">
+      <div class="w-row"><div class="provider-icon deepseek"><img src="./provider-icons/deepseek.svg" alt="DeepSeek"/></div><div><div class="row-name">DeepSeek</div><div class="row-meta">工作账户 · API</div></div><div class="row-value"><strong>¥86.42</strong><small>账户余额</small></div></div>
+      <div class="w-row"><div class="provider-icon chatgpt"><img src="./provider-icons/openai.svg" alt="ChatGPT" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span class=&quot;fallback&quot;>◎</span>')"/></div><div><div class="row-name">ChatGPT</div><div class="row-meta">个人账户 · 手动记录</div></div><div class="row-value"><strong>32 / 80</strong><small>已用 / 参考上限</small></div></div>
+      <div class="w-row"><div class="provider-icon openrouter"><img src="./provider-icons/openrouter.svg" alt="OpenRouter"/></div><div><div class="row-name">OpenRouter</div><div class="row-meta">备用账户 · API</div></div><div class="row-value"><strong class="subtle-warning">$8.10</strong><small>账户余额</small></div></div>
+      <div class="w-row"><div class="provider-icon claude"><img src="./provider-icons/claude.svg" alt="Claude"/></div><div><div class="row-name">Claude</div><div class="row-meta">尚未连接 · 手动记录</div></div><div class="row-value"><strong>--</strong><small>待记录</small></div></div>
+    </div>
+    <div class="w-graph" aria-label="仅预览模式模拟走势"><i style="height:24%"></i><i style="height:46%"></i><i style="height:31%"></i><i style="height:57%"></i><i style="height:39%"></i><i style="height:82%"></i><i style="height:62%"></i><i style="height:72%"></i><i style="height:43%"></i><i style="height:55%"></i><i style="height:67%"></i><i style="height:51%"></i><i style="height:74%"></i></div>
+    <footer class="w-foot"><span>● 示例数值 · 本机预览</span><button id="openDashboard">查看详情 ↗</button></footer>
+    <div id="widgetResize" class="widget-resize-grip" title="拖动调整宽度与高度" aria-label="调整组件尺寸"><svg viewBox="0 0 18 18"><path d="m6 15 9-9M11 15l4-4"/></svg></div>
+    <section class="widget-settings" id="widgetSettings" aria-label="组件外观设置">
+      <div class="widget-settings-head"><strong>外观与布局</strong><button id="widgetSettingsClose" aria-label="关闭外观设置"><svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
+      <div class="widget-settings-section">
+        <span>玻璃颜色</span>
+        <div class="widget-settings-tints">
+          <button data-widget-tint="smoke" title="烟灰"><i class="smoke"></i>烟灰</button>
+          <button data-widget-tint="clear" title="冰白"><i class="clear"></i>冰白</button>
+          <button data-widget-tint="warm" title="暖灰"><i class="warm"></i>暖灰</button>
+        </div>
+      </div>
+      <div class="widget-settings-section widget-settings-opacity"><label for="widgetOpacity">透明度</label><input id="widgetOpacity" type="range" min="25" max="95" value="74"/><output id="widgetOpacityValue">74%</output></div>
+      <div class="widget-settings-section"><span>布局</span><div class="widget-settings-layouts"><button data-widget-layout="card">卡片</button><button data-widget-layout="rail">横条</button><button data-widget-layout="side">侧栏</button></div></div>
+    </section>
+    <div class="compact-face"><button class="compact-toggle" id="compactToggle" title="点击展开组件">
+      <span class="brand-logo" id="compactLogo"></span>
+      <span class="mini-copy"><strong>QuotaHub</strong><small>3 个账户 · 示例</small></span>
+      <svg class="mini-chevron" viewBox="0 0 24 24"><path d="m8 5 7 7-7 7"/></svg>
+    </button></div>
+  </section>
+  <div class="taskbar"><span class="win">⊞</span><span class="finder">▣</span><span class="edge">e</span><span class="app">◈</span></div><div class="taskbar-time">14:40<br/>2026/11/10</div><div class="preview-help">这是桌面附着式组件的外观模拟，不是完整应用窗口。</div>
+  <div class="m-screen">
+    <div class="m-phone"><div class="m-time">09:41</div><div class="m-date">11月10日 星期二</div>
+     <div class="m-widget wide" id="mWidget"><div class="m-widget-title">QuotaHub <span>演示额度 · 5 分钟前</span></div>
+       <div class="m-rows">
+         <div class="m-line"><div class="provider-icon deepseek"><img src="./provider-icons/deepseek.svg" alt="DeepSeek"/></div><div><div class="m-name">DeepSeek</div><div class="m-value">¥86.42</div></div></div>
+         <div class="m-line"><div class="provider-icon chatgpt"><img src="./provider-icons/openai.svg" alt="ChatGPT"/></div><div><div class="m-name">ChatGPT</div><div class="m-value">32 / 80</div></div></div>
+         <div class="m-line"><div class="provider-icon openrouter"><img src="./provider-icons/openrouter.svg" alt="OpenRouter"/></div><div><div class="m-name">OpenRouter</div><div class="m-value">$8.10</div></div></div>
+         <div class="m-line"><div class="provider-icon claude"><img src="./provider-icons/claude.svg" alt="Claude"/></div><div><div class="m-name">Claude</div><div class="m-value">待记录</div></div></div>
+       </div>
+     </div>
+     <div class="m-apps"><div class="m-app"><span>☎</span>电话</div><div class="m-app"><span>✉</span>信息</div><div class="m-app"><span>◎</span>浏览器</div><div class="m-app"><span>▦</span>应用</div></div>
+    </div>
+  </div>
+</main>
+</div>
+<script>
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const vp=$('#viewport'), w=$('#widget'), mobile=$('#mWidget');
+const marks={
+ bars:'<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="4" height="10" rx="2" fill="currentColor"/><rect x="10" y="4" width="4" height="16" rx="2" fill="currentColor"/><rect x="16" y="8" width="4" height="12" rx="2" fill="currentColor"/></svg>',
+ ring:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="3"/><path d="M12 4a8 8 0 018 8" stroke="#c35a61" stroke-width="3"/></svg>',
+ layers:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5ZM4 12l8 4.5 8-4.5M4 16.5 12 21l8-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+let lay='card', origin={x:50,y:46};
+let compactMode='edge', compact=false;
+let oldExpanded={left:'50%',top:'46%'};
+function renderCompact(){
+ w.classList.toggle('compact',compact);
+ w.classList.remove('mode-edge','mode-orb','mode-island');
+ w.classList.add('mode-'+(compactMode==='none'?'orb':compactMode));
+ $('#compactAction').textContent=compact?'展开组件 · 预览':'收起组件 · 预览';
+ const copy={
+   none:'始终保持展开状态，可随时切换其他收纳方式。',
+   edge:'贴边收缩：拖到左右边缘自动缩成标签，点击标签展开。',
+   orb:'悬浮球：收起只留下一个圆形图标，点击恢复原布局。',
+   island:'灵动岛：收起为顶部胶囊，点击展开额度信息。'
+ };
+ $('#compactHelp').textContent=copy[compactMode]||'';
+ $$('.compact-pick').forEach(b=>b.classList.toggle('active',b.dataset.compactMode===compactMode));
+ $('#compactLogo').innerHTML=$('#widgetLogo').innerHTML;
+ if(!document.body.classList.contains('runtime')){
+   if(compact){
+     if(compactMode==='edge'){
+       const right=(parseFloat(oldExpanded.left)||50)>=50;
+       w.style.left=right?'calc(100% - 39px)':'39px'; w.style.top=oldExpanded.top;
+     }else if(compactMode==='island'){
+       w.style.left='50%';w.style.top='19%';
+     }else{
+       w.style.left=oldExpanded.left;w.style.top=oldExpanded.top;
+     }
+   }else{
+     w.style.left=oldExpanded.left;w.style.top=oldExpanded.top;
+   }
+ }
+}
+function toggleCompact(){
+ if(compactMode==='none'&&!compact)compactMode='orb';
+ if(document.body.classList.contains('runtime')&&window.quotaWidget?.toggle){
+    void window.quotaWidget.toggle().then(applyNativeSettings);
+    return;
+ }
+ if(!compact)oldExpanded={left:w.style.left||'50%',top:w.style.top||'46%'};
+ compact=!compact;renderCompact();
+}
+function selectCompactMode(next){
+ if(!['none','edge','orb','island'].includes(next))return;
+ if(document.body.classList.contains('runtime')&&window.quotaWidget?.setCollapseMode){
+   void window.quotaWidget.setCollapseMode(next).then(applyNativeSettings);
+   return;
+ }
+ if(!compact)oldExpanded={left:w.style.left||'50%',top:w.style.top||'46%'};
+ compactMode=next;
+ compact=(next==='orb'||next==='island')||(next==='edge'&&compact);
+ if(next==='none')compact=false;
+ renderCompact();
+}
+$$('[data-compact-mode]').forEach(b=>b.addEventListener('click',()=>selectCompactMode(b.dataset.compactMode)));
+$('#compactAction').addEventListener('click',toggleCompact);
+$('#widgetCollapse').addEventListener('click',()=>{
+ if(document.body.classList.contains('runtime')&&window.quotaWidget?.hideToTray){
+   void window.quotaWidget.hideToTray().catch(console.error);
+ }else toggleCompact();
+});
+$('#compactToggle').addEventListener('click',toggleCompact);
+
+function setMode(kind){
+ vp.classList.toggle('mobile-mode',kind==='mobile');$$('[data-env]').forEach(b=>b.classList.toggle('active',b.dataset.env===kind));
+ $('#layoutLabel').textContent=kind==='mobile'?'桌面组件大小':'组件布局';
+ applyLayout(lay);
+}
+function applyLayout(next, fromHost=false){
+ if(!fromHost&&document.body.classList.contains('runtime')&&window.quotaWidget?.setLayout)window.quotaWidget.setLayout(next);
+ lay=next;w.classList.remove('layout-card','layout-rail','layout-side');w.classList.add('layout-'+lay);
+ mobile.classList.remove('compact','wide','tall');mobile.classList.add({card:'wide',rail:'compact',side:'tall'}[lay]);
+ $$('[data-layout]').forEach(b=>b.classList.toggle('active',b.dataset.layout===lay));
+}
+$$('[data-env]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.env)));
+$$('[data-layout]').forEach(b=>b.addEventListener('click',()=>applyLayout(b.dataset.layout)));
+$$('[data-tint]').forEach(b=>b.addEventListener('click',()=>{w.classList.remove('smoke','clear','warm');w.classList.add(b.dataset.tint);$$('[data-tint]').forEach(x=>x.classList.toggle('active',x===b));mobile.style.background=b.dataset.tint==='clear'?'rgba(236,242,246,.34)':b.dataset.tint==='warm'?'rgba(142,119,113,.38)':'rgba(203,218,230,.21)'}));
+$('#opacity').addEventListener('input',e=>{const n=Number(e.target.value);w.style.setProperty('--op',String(n/100));$('#opacityOutput').textContent=n+'%';mobile.style.opacity=String(.48+n/200)});
+$$('[data-logo]').forEach(b=>b.addEventListener('click',()=>{$$('.brand-choice').forEach(x=>x.classList.toggle('active',x===b));$('#widgetLogo').innerHTML=marks[b.dataset.logo];$('.control-top .brand-logo').innerHTML=marks[b.dataset.logo];renderCompact()}));
+function reset(){origin={x:50,y:46};oldExpanded={left:'50%',top:'46%'};w.style.left=origin.x+'%';w.style.top=origin.y+'%';renderCompact()}
+$('#resetPos').addEventListener('click',reset);
+$('#widgetRefresh').addEventListener('click',()=>{
+ if(document.body.classList.contains('runtime')&&window.quotaWidget?.refreshAccounts){
+  $('.w-sub').textContent='正在同步已连接账户…';
+  void window.quotaWidget.refreshAccounts().then(renderNativeAccounts).catch(()=>{$('.w-sub').textContent='同步失败，可打开额度中心查看'});
+ }else{$('.w-sub').textContent='3 个账号 · 刚刚同步（演示）'}
+});
+$('#widgetMode').addEventListener('click',()=>applyLayout({card:'rail',rail:'side',side:'card'}[lay]));
+$('#openDashboard').addEventListener('click',()=>{if(window.quotaWidget?.openDashboard)window.quotaWidget.openDashboard();else window.open('/?demo=1','_blank','noopener')});
+let drag=null;$('#dragHandle').addEventListener('pointerdown',e=>{if(document.body.classList.contains('runtime')||e.target.closest('button'))return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,left:parseFloat(w.style.left)||50,top:parseFloat(w.style.top)||46};$('#dragHandle').setPointerCapture(e.pointerId)});
+$('#dragHandle').addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const rect=vp.getBoundingClientRect();const x=drag.left+(e.clientX-drag.x)/rect.width*100,y=drag.top+(e.clientY-drag.y)/rect.height*100;w.style.left=Math.max(13,Math.min(87,x))+'%';w.style.top=Math.max(20,Math.min(77,y))+'%'});
+$('#dragHandle').addEventListener('pointerup',()=>{
+ if(drag&&compactMode==='edge'&&!compact){
+   const width=vp.clientWidth,center=parseFloat(w.style.left)||50;
+   const left=center/100*width-w.offsetWidth/2,right=width-(center/100*width+w.offsetWidth/2);
+   if(Math.min(left,right)<=32){
+     oldExpanded={left:w.style.left||'50%',top:w.style.top||'46%'};
+     compact=true;renderCompact();
+   }
+ }
+ drag=null;
+});$('#dragHandle').addEventListener('pointercancel',()=>drag=null);
+function applyNativeSettings(settings){
+
+ const pinButton=document.querySelector('#widgetPin');
+ if(pinButton&&typeof settings.pin==='boolean'){
+   pinButton.classList.toggle('active',settings.pin);
+   pinButton.setAttribute('aria-pressed',String(settings.pin));
+   pinButton.title=settings.pin?'取消始终置顶':'始终置顶';
+ }
+
+ if(!document.body.classList.contains('runtime')||!settings)return;
+ if(['none','edge','orb','island'].includes(settings.collapseMode))compactMode=settings.collapseMode;
+ compact=!!settings.collapsed;
+
+ if(['card','rail','side'].includes(settings.layout))applyLayout(settings.layout,true);
+ if(['smoke','clear','warm'].includes(settings.tint)){
+   w.classList.remove('smoke','clear','warm');w.classList.add(settings.tint);
+ }
+ if(typeof settings.opacity==='number')w.style.setProperty('--op',String(settings.opacity/100));
+ if(['bars','ring','layers'].includes(settings.logo)){
+   $('#widgetLogo').innerHTML=marks[settings.logo];
+ }
+ renderCompact();
+ syncWidgetControls();
+}
+
+function renderNativeAccounts(all) {
+ if(!document.body.classList.contains('runtime'))return;
+ const accounts=Array.isArray(all)?all:[];
+ const connected=accounts.filter(x=>x&&(x.connected||x.webMonitored)).length;
+ $('.w-sub').textContent=accounts.length+' 个账号 · '+connected+' 个实时连接';
+ const mini=$('.mini-copy small');
+ if(mini)mini.textContent=accounts.length+' 个账号 · '+connected+' 已连接';
+ const tile=$('.w-banner strong');
+ if(tile)tile.textContent=String(accounts.length).padStart(2,'0');
+ const foot=$('.w-foot span');
+ if(foot)foot.textContent='● 本地账户数据 · 不含演示余额';
+ const list=$('.w-list');
+ list.replaceChildren();
+ w.classList.toggle('is-empty',accounts.length===0);
+ if(!accounts.length){
+  const empty=document.createElement('div');empty.className='w-empty';
+  const graphic=document.createElement('div');graphic.className='w-empty-icon';
+  graphic.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M9 10h6M9 14h4"/></svg>';
+  const copy=document.createElement('div');copy.className='w-empty-copy';
+  const title=document.createElement('strong');title.className='w-empty-title';title.textContent='还没有绑定账号';
+  const hint=document.createElement('span');hint.className='w-empty-description';hint.textContent='添加平台后，在桌面查看余额与用量';
+  copy.append(title,hint);
+  const btn=document.createElement('button');btn.className='w-empty-button';btn.textContent='添加账号';
+  btn.addEventListener('click',()=>{
+    if(window.quotaWidget?.openDashboard)void window.quotaWidget.openDashboard();
+    else window.open('/?demo=1','_blank','noopener');
+  });
+  empty.append(graphic,copy,btn);
+  list.append(empty);
+  return;
+ }
+ for(const p of accounts.slice(0,5)){
+  const row=document.createElement('div');row.className='w-row';
+  const logo=document.createElement('div');logo.className='provider-icon';
+  const kind=['chatgpt','openai-api'].includes(p.kind)?'openai':p.kind;
+  if(kind==='relay'||kind==='custom'){
+   logo.textContent='Q';logo.style.color='#35465a';logo.style.fontWeight='800';
+  }else{
+   const img=document.createElement('img');img.alt='';img.src='./provider-icons/'+kind+'.svg';
+   img.onerror=()=>{img.remove();logo.textContent='Q';logo.style.color='#35465a'};
+   logo.append(img);
+  }
+  const block=document.createElement('div');
+  const name=document.createElement('div');name.className='row-name';name.textContent=p.name;
+  const note=document.createElement('div');note.className='row-meta';
+  note.textContent=(p.account||'个人账号')+' · '+(
+   p.webMonitored?'网页监测':p.connected?'实时同步':p.value===null?'等待自动读取':'手动记录');
+  block.append(name,note);
+  const amount=document.createElement('div');amount.className='row-value';
+  const big=document.createElement('strong');
+  if(typeof p.value==='number'&&Number.isFinite(p.value)){
+   const symbol=p.unit==='CNY'?'¥':p.unit==='USD'?'$':'';
+   big.textContent=symbol+Number(p.value).toLocaleString('zh-CN',{maximumFractionDigits:2})+(p.unit==='%'?'%':'');
+  }else big.textContent='—';
+  const label=document.createElement('small');label.textContent=p.unit==='%'?
+   (p.metric==='balance'?'剩余使用比例':'已使用比例'):
+   p.metric==='balance'?'剩余额度':p.metric==='spend'?'本月消费':'已使用额度';
+  if(p.value!==null&&!['CNY','USD','%'].includes(p.unit))label.textContent+=' · '+p.unit;
+  amount.append(big,label);row.append(logo,block,amount);
+  list.append(row);
+ }
+}
+function syncWidgetControls(){
+  const tint=['clear','warm'].find(t=>w.classList.contains(t))||'smoke';
+  $$('[data-widget-tint]').forEach(b=>b.classList.toggle('active',b.dataset.widgetTint===tint));
+  $$('[data-widget-layout]').forEach(b=>b.classList.toggle('active',b.dataset.widgetLayout===lay));
+  const opacity=Math.round(parseFloat(w.style.getPropertyValue('--op')||'.74')*100);
+  $('#widgetOpacity').value=String(opacity);
+  $('#widgetOpacityValue').textContent=opacity+'%';
+}
+function widgetAppearanceChange(changes){
+  if(document.body.classList.contains('runtime')&&window.quotaWidget?.setAppearance){
+    void window.quotaWidget.setAppearance(changes).then(applyNativeSettings).catch(()=>{});
+    return;
+  }
+  if(changes.tint){
+    w.classList.remove('smoke','clear','warm');
+    w.classList.add(changes.tint);
+  }
+  if(Number.isInteger(changes.opacity))w.style.setProperty('--op',String(changes.opacity/100));
+  syncWidgetControls();
+}
+$('#widgetAppearance').addEventListener('click',()=>{w.classList.toggle('settings-open');syncWidgetControls()});
+$('#widgetSettingsClose').addEventListener('click',()=>w.classList.remove('settings-open'));
+$$('[data-widget-tint]').forEach(b=>b.addEventListener('click',()=>widgetAppearanceChange({tint:b.dataset.widgetTint})));
+$$('[data-widget-layout]').forEach(b=>b.addEventListener('click',()=>{applyLayout(b.dataset.widgetLayout);syncWidgetControls()}));
+$('#widgetOpacity').addEventListener('input',e=>widgetAppearanceChange({opacity:Number(e.target.value)}));
+let nativeResize=null;
+const grip=$('#widgetResize');
+grip.addEventListener('pointerdown',e=>{
+ if(!document.body.classList.contains('runtime')||w.classList.contains('compact'))return;
+ e.preventDefault();e.stopPropagation();
+ nativeResize={id:e.pointerId,startX:e.screenX,startY:e.screenY,width:window.innerWidth,height:window.innerHeight};
+ grip.setPointerCapture(e.pointerId);
+});
+grip.addEventListener('pointermove',e=>{
+ if(!nativeResize||nativeResize.id!==e.pointerId)return;
+ const width=nativeResize.width+e.screenX-nativeResize.startX;
+ const height=nativeResize.height+e.screenY-nativeResize.startY;
+ if(!nativeResize.scheduled){
+  nativeResize.scheduled=true;
+  requestAnimationFrame(()=>{
+   if(!nativeResize)return;
+   nativeResize.scheduled=false;
+   void window.quotaWidget?.resize?.(nativeResize.targetW,nativeResize.targetH);
+  });
+ }
+ nativeResize.targetW=width;nativeResize.targetH=height;
+});
+grip.addEventListener('pointerup',()=>{nativeResize=null});
+grip.addEventListener('pointercancel',()=>{nativeResize=null});
+
+$('#widgetPin').addEventListener('click',()=>{
+ const button=$('#widgetPin');
+ const next=button.getAttribute('aria-pressed')!=='true';
+ if(document.body.classList.contains('runtime')&&window.quotaWidget?.setAppearance){
+   void window.quotaWidget.setAppearance({pin:next}).then(applyNativeSettings).catch(console.error);
+ }else{
+   button.classList.toggle('active',next);
+   button.setAttribute('aria-pressed',String(next));
+ }
+});
+
+const qs=new URLSearchParams(location.search);
+if(qs.get('runtime')==='1'){
+ document.body.classList.add('runtime');
+ $('#widgetCollapse').title='收至系统托盘（仅保留图标）';
+ $('#widgetCollapse').setAttribute('aria-label','收至系统托盘');
+ $('#dragHandle').style.touchAction='auto';
+ window.quotaWidget?.onSettings?.(applyNativeSettings);
+ window.quotaWidget?.getSettings?.().then(applyNativeSettings).catch(()=>{});
+ window.quotaWidget?.onAccounts?.(renderNativeAccounts);
+ window.quotaWidget?.getAccounts?.().then(renderNativeAccounts).catch(()=>renderNativeAccounts([]));
+
+}
+if(qs.get('env')==='mobile')setMode('mobile');
+if(['card','rail','side'].includes(qs.get('layout')))applyLayout(qs.get('layout'),true);
+if(qs.get('runtime')!=='1'){
+ $('#widgetLogo').innerHTML=marks.ring;
+ $('.control-top .brand-logo').innerHTML=marks.ring;
+ $$('.brand-choice').forEach(x=>x.classList.toggle('active',x.dataset.logo==='ring'));
+}
+renderCompact();
+if(qs.get('runtime')!=='1' && ['edge','orb','island'].includes(qs.get('compact'))){
+ selectCompactMode(qs.get('compact'));
+ if(qs.get('compact')==='edge'&&!compact)toggleCompact();
+}
+</script>
+</body></html>

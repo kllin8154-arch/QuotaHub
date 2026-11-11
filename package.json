@@ -1,0 +1,64 @@
+{
+  "name": "aiquotahub",
+  "version": "0.9.3",
+  "private": true,
+  "description": "Local-first AI subscription and API credit dashboard",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "desktop": "electron .",
+    "desktop:dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "pack:win": "npm run build && electron-builder --win portable --x64 --publish never",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "test:quota": "node tests/test-chatgpt-autolink.cjs && node tests/test-deepseek-autolink.cjs && node tests/test-webmonitor.cjs"
+  },
+  "dependencies": {
+    "@capacitor/browser": "^7.0.3",
+    "@capacitor/core": "^7.4.6",
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "simple-icons": "^16.37.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.6",
+    "@capacitor/cli": "^7.4.6",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^9.2.0",
+    "electron": "^39.2.0",
+    "electron-builder": "^26.0.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.0",
+    "wait-on": "^9.0.0"
+  },
+  "build": {
+    "appId": "com.aiquotahub.desktop",
+    "productName": "AI Quota Hub",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "portable": {
+      "artifactName": "AIQuotaHub-${version}-portable.exe"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "public/app-icon.ico",
+      "executableName": "QuotaHub"
+    }
+  }
+}
