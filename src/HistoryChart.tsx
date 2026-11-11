@@ -31,7 +31,7 @@ export default function HistoryChart({provider,revision}:{provider:Provider;revi
   const cutoff=Date.now()-duration
   return points.filter(p=>Date.parse(p.at)>=cutoff && p.metric===provider.metric && p.unit===provider.unit && (!provider.source || p.source===provider.source))
    .sort((a,b)=>Date.parse(a.at)-Date.parse(b.at)).slice(-160)
- },[points,provider.metric,provider.unit,span])
+ },[points,provider.metric,provider.unit,provider.source,span])
  const values=view==='line'?entries.map(p=>p.value):entries.slice(1).map((p,i)=>Math.max(0,provider.metric==='balance'?entries[i].value-p.value:p.value-entries[i].value))
  const low=values.length?Math.min(...values):0
  const high=values.length?Math.max(...values):1
@@ -64,9 +64,16 @@ export default function HistoryChart({provider,revision}:{provider:Provider;revi
      {loaded && values.length>=(view==='line'?2:1) ?
        <svg viewBox={'0 0 '+W+' '+H} role="img" aria-label={provider.name+(view==='line'?'余额趋势':'每次采样间隔变化')+'，共'+values.length+'个数据点'}>
         {[0,1,2,3].map(i=><line key={i} x1={PAD} x2={W-PAD} y1={PAD+i*graphH/3} y2={PAD+i*graphH/3} stroke="currentColor" strokeOpacity=".12" strokeDasharray="3 5"/>)}
-        {view==='line'?<><path d={line} fill="none" stroke="#82b0dc" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round"/>
-         {data.filter((_,i)=>i===0||i===data.length-1||i%Math.ceil(data.length/14)===0).map(([x,y],i)=><circle key={i} cx={x} cy={y} r="3" fill="#d4e9f9" stroke="#5e9cce" strokeWidth="1.3"/>)}</>:
-         data.map(([x,y],i)=><rect key={i} x={x-Math.max(2,graphW/(values.length+5)*.4)} y={y} width={Math.max(4,Math.min(20,graphW/(values.length+5)*.8))} height={H-PAD-y} rx="2" fill="#82b0dc" fillOpacity=".83"/>)}
+        {view==='line'?<><path d={line} fill="none" stroke="#5da68e" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round"/>
+         {data.map(([x,y],i)=>i===0||i===data.length-1||i%Math.max(1,Math.ceil(data.length/14))===0
+          ?<circle key={i} cx={x} cy={y} r="3" fill="#d9f0e5" stroke="#337a65" strokeWidth="1.3">
+            <title>{new Date(entries[i].at).toLocaleString('zh-CN')} · {fmt(entries[i].value)} {provider.unit}</title>
+           </circle>:null)}</>:
+         data.map(([x,y],i)=><rect key={i} x={x-Math.max(2,graphW/(values.length+5)*.4)} y={y} width={Math.max(4,Math.min(20,graphW/(values.length+5)*.8))} height={H-PAD-y} rx="2" fill="#5da68e" fillOpacity=".83">
+          <title>{new Date(entries[i+1].at).toLocaleString('zh-CN')} · 区间变化 {fmt(values[i])} {provider.unit}</title>
+         </rect>)}
+        <text x={PAD} y={H-5} fontSize="10" fill="currentColor" opacity=".68">{entries[0] && new Date(entries[0].at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</text>
+        <text x={W-PAD} y={H-5} fontSize="10" textAnchor="end" fill="currentColor" opacity=".68">{mostRecent && new Date(mostRecent.at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</text>
        </svg> :
        <div className="history-unavailable"><History size={23}/><strong>{!loaded?'正在读取历史数据…':'等待真实数据变化'}</strong><span>至少需要两次成功采样才能形成趋势。不会生成虚构数据。</span></div>}
    </div>

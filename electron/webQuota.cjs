@@ -366,7 +366,24 @@ function register({dir,onUpdate}){
  ipcMain.handle('quota:webOpen',(_e,kind,id)=>open(kind,id));
  ipcMain.handle('quota:webRead',(_e,kind,id)=>read(kind,id));
  ipcMain.handle('quota:webBind',(_e,kind,id,choice)=>bind(kind,id,choice));
- ipcMain.handle('quota:webSample',(_e,kind,id)=>sample(kind,id,true));
+ ipcMain.handle('quota:webSample',async(_e,kind,id)=>{
+  // A user-initiated Refresh must request the latest official usage page,
+  // not only reread an outdated hidden SPA DOM.
+  const win=windows.get(sessionKey(kind,id));
+  if(['deepseek','chatgpt'].includes(kind) && win&&!win.isDestroyed()
+     && !win.isVisible?.() && typeof win.webContents.reloadIgnoringCache==='function'){
+   await new Promise(resolve=>{
+    let done=false;
+    const finish=()=>{if(done)return;done=true;clearTimeout(timeout);
+      win.webContents.removeListener?.('did-finish-load',finish);resolve()};
+    const timeout=setTimeout(finish,12000);
+    win.webContents.once?.('did-finish-load',finish);
+    try{win.webContents.reloadIgnoringCache()}catch{finish()}
+   });
+   await new Promise(resolve=>setTimeout(resolve,1200));
+  }
+  return sample(kind,id,true);
+ });
  ipcMain.handle('quota:webUnbind',(_e,id)=>unbind(id));
  ipcMain.handle('quota:webBindings',()=>{
   const all=readFile(bindingsPath,{});

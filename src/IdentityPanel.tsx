@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, CircleHelp, ExternalLink, LoaderCircle, LockKeyhole, Settings2, ShieldCheck, X } from 'lucide-react'
-import type { GoogleIdentityState } from './types'
+import type { GoogleIdentityState, PlatformLinksStatus } from './types'
 
 const googleHelp='https://console.cloud.google.com/auth/clients'
 const localState:GoogleIdentityState={configured:false,clientSecretConfigured:false,secureStorage:false,busy:false,profile:null}
@@ -13,8 +13,11 @@ function showLink(url:string){
  if(window.quotaBridge?.openExternal)void window.quotaBridge.openExternal(url)
  else window.open(url,'_blank','noopener,noreferrer')
 }
-export default function IdentityPanel({open,onClose}:{open:boolean;onClose:()=>void}){
+export default function IdentityPanel({open,onClose,knownProviders=[]}:{open:boolean;onClose:()=>void;
+ knownProviders?:{id:string;name:string;account?:string}[]}){
  const [state,setState]=useState<GoogleIdentityState>(localState)
+ const [links,setLinks]=useState<PlatformLinksStatus|null>(null)
+ const [linkBusy,setLinkBusy]=useState(false)
  const [busy,setBusy]=useState(false)
  const [clientId,setClientId]=useState('')
  const [showSetup,setShowSetup]=useState(false)
@@ -28,6 +31,22 @@ export default function IdentityPanel({open,onClose}:{open:boolean;onClose:()=>v
   const unsubscribe=window.quotaBridge?.onIdentity?.(value=>{if(mounted)setState(value)})
   return ()=>{mounted=false;unsubscribe?.()}
  },[open,isDesktop])
+ useEffect(()=>{
+  if(!open||!state.profile||!window.quotaBridge?.platformLinks){setLinks(null);return}
+  let mounted=true
+  void window.quotaBridge.platformLinks().then(s=>{if(mounted)setLinks(s)}).catch(()=>{})
+  return ()=>{mounted=false}
+ },[open,state.profile?.email,knownProviders.length])
+ async function linkAccounts(ids:string[],unlink=false){
+  const bridge=window.quotaBridge
+  if(!bridge)return
+  setLinkBusy(true);setError('')
+  try{
+   const status=unlink?await bridge.unlinkExistingAccounts?.(ids):await bridge.linkExistingAccounts?.(ids)
+   if(status)setLinks(status)
+  }catch(e){setError(readableOAuthError(e))}
+  finally{setLinkBusy(false)}
+ }
  if(!open)return null
  async function login(){
   if(!window.quotaBridge?.googleSignIn)return
@@ -94,6 +113,24 @@ export default function IdentityPanel({open,onClose}:{open:boolean;onClose:()=>v
        {isDesktop&&!state.secureStorage && <p className="identity-help">此设备无法使用系统加密存储，因此暂时禁用 Google 登录。</p>}
        {isDesktop&&!state.configured&&<p className="identity-help">需要项目所有者首次配置 Google Cloud 的桌面 OAuth Client ID。完成后，普通用户只需点击登录。</p>}
       </div>}
+     {state.profile && isDesktop && <section className="identity-account-links">
+      <div className="identity-account-links-top"><strong>已连接的 AI 平台</strong><span>{links?.linkedCount??0} / {links?.availableCount??0}</span></div>
+      <p>这里关联的是已经授权并能够采集的本机平台账号。重启后将复用各平台已有会话，Google 本身不提供其他平台的额度权限。</p>
+      {!!links?.linked.length&&<div className="identity-linked-items">
+       {links.linked.map(id=>{const provider=knownProviders.find(p=>p.id===id);return <div className="identity-linked-item" key={id}>
+        <span>{provider?.name||'已连接平台'}{provider?.account?' · '+provider.account:''}</span><span>已关联</span>
+       </div>})}
+      </div>}
+      {!!links?.unlinked.length&&<>
+       <p>{links.unlinked.length} 个已连接的本机账号尚未归入当前 Google 身份。确认它们属于此身份后，可一次关联，不需要再次登录平台。</p>
+       <button type="button" className="identity-outline-button" disabled={linkBusy||busy}
+        onClick={()=>void linkAccounts(links.unlinked)}>关联现有 {links.unlinked.length} 个账号</button>
+      </>}
+      {!!links?.linked.length&&<button type="button" className="identity-text-button" disabled={linkBusy||busy}
+       onClick={()=>void linkAccounts(links.linked,true)}>解除身份分组（保留平台登录与额度）</button>}
+      {!!links?.conflictCount&&<p>有 {links.conflictCount} 个本机账号已归入其他 Google 身份，未自动转移。</p>}
+      {links?.availableCount===0&&<p>尚无可采集平台。已有网页登录会话恢复后，将自动出现在这里。</p>}
+     </section>}
      {isDesktop && <div className="identity-setup">
       <button className="identity-setup-trigger" onClick={()=>setShowSetup(!showSetup)} aria-expanded={showSetup}>
        <Settings2 size={16}/> 应用 OAuth 配置 <span>{showSetup?'收起':'展开'}</span>

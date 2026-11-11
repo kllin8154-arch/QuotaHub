@@ -58,3 +58,21 @@
 .identity-settings-card p{font-size:11px;color:#adbfd1;line-height:1.6;margin:5px 0 0}
 .identity-settings-card button{border:1px solid #70849b;border-radius:9px;background:#34475b;color:#f5f9fc;padding:10px 12px;font-size:11.5px;font-weight:700}
 @media(max-width:680px){.identity-dialog{border-radius:16px}.identity-head{padding:20px}.identity-body{padding:18px}.identity-foot{padding:14px 18px}.identity-account-trigger{padding:8px}.identity-account-trigger span{display:none}}
+
+/* Google identity is account grouping, not a shared provider credential. */
+.identity-account-links{padding:17px 18px;margin-top:17px;border:1px solid rgba(141,169,159,.30);border-radius:16px;background:rgba(91,123,110,.10)}
+.identity-account-links-top{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#f2f5f5}
+.identity-account-links-top span{font-size:12px;font-variant-numeric:tabular-nums;color:#94cbb6}
+.identity-account-links p{font-size:12px;line-height:1.8;color:#b9c8c8;margin:9px 0 12px}
+.identity-linked-items{display:flex;flex-direction:column;gap:4px;margin:12px 0}
+.identity-linked-item{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#e9f0ee;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.055)}
+.identity-linked-item span:last-child{white-space:nowrap;color:#92cdb5}
+.identity-account-links .identity-outline-button{margin:4px 0 8px}
+.identity-account-links .identity-text-button{margin-top:8px}
+.identity-reuse-banner{padding:15px 16px;border:1px solid rgba(130,183,164,.33);background:rgba(73,120,99,.14);border-radius:13px;margin:10px 0 17px}
+.identity-reuse-banner strong{font-size:14px;color:#e9f5ef}
+.identity-reuse-banner p{font-size:12px;line-height:1.75;color:#c1d4cc;margin:8px 0 11px}
+.identity-reuse-actions{display:flex;flex-wrap:wrap;gap:9px}
+.identity-reuse-banner button{padding:8px 12px;border-radius:9px;border:1px solid rgba(162,204,184,.4);background:rgba(255,255,255,.06);color:#eaf3ef;cursor:pointer}
+.identity-reuse-actions button:first-child{background:#d6ebe0;color:#173a2c;border-color:transparent;font-weight:650}
+.identity-reuse-banner button:hover{filter:brightness(1.1)}

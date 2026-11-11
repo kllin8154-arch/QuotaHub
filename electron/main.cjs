@@ -6,12 +6,14 @@ const dns = require('node:dns');
 const net = require('node:net');
 const webQuota = require('./webQuota.cjs');
 const { createGoogleIdentity } = require('./googleIdentity.cjs');
+const { createAccountLinks } = require('./accountLinks.cjs');
 const dataDir = process.env.AIQUOTA_DATA_DIR || path.join(app.getPath('userData'), 'local-data');
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
 app.setAppUserModelId('com.agnovexa.one.desktop');
 const secretsPath = path.join(dataDir, 'secrets.json');
 let googleIdentity = null;
+let accountLinks = null;
 function broadcastIdentity(status){
  for(const window of BrowserWindow.getAllWindows()){
   if(!window.isDestroyed()&&!window.webContents.isDestroyed()&&window.webContents.getURL().includes('index.html')){
@@ -29,9 +31,22 @@ ipcMain.handle('identity:importOAuthJson',async()=>{
  if(choice.canceled||!choice.filePaths?.[0])return googleIdentity?.status();
  return googleIdentity?.importClientJSONFile(choice.filePaths[0]);
 });
-ipcMain.handle('identity:signIn',()=>googleIdentity?.signIn());
+ipcMain.handle('identity:signIn',async()=>{
+ const result=await googleIdentity?.signIn();
+ // Successful identity login triggers rechecks of pre-authorized provider sessions.
+ // This does not turn Google's identity token into third-party credentials.
+ if(result?.profile)setTimeout(()=>{
+  void webQuota.pollAll().catch(()=>{});
+  void refreshConnectedApiAccounts().catch(()=>{});
+ },0).unref?.();
+ return result;
+});
 ipcMain.handle('identity:signOut',()=>googleIdentity?.signOut());
 ipcMain.handle('identity:cancel',()=>googleIdentity?.cancel());
+ipcMain.handle('identity:linksStatus',()=>accountLinks?.status()||{
+ verified:false,linked:[],unlinked:[],linkedCount:0,availableCount:0,conflictCount:0});
+ipcMain.handle('identity:linkExisting',(_event,ids)=>accountLinks?.link(ids));
+ipcMain.handle('identity:unlinkExisting',(_event,ids)=>accountLinks?.unlink(ids));
 const widgetAccountsPath = path.join(dataDir,'widget-accounts.json');
 function cleanWidgetAccounts(list) {
  if(!Array.isArray(list))return [];
@@ -82,7 +97,13 @@ async function decrypt(encoded) {
  return safeStorage.decryptString(data);
 }
 async function fetchJson(url,key) {
- const res=await fetch(url, {headers:{Authorization:'Bearer '+key,Accept:'application/json'},signal:AbortSignal.timeout(12000),cache:'no-store',redirect:'error'});
+ // Official public API endpoints: Chromium follows the user's Windows proxy.
+ // API bearer headers are only sent to fixed vendor URLs and redirects are denied.
+ const netSession=typeof app.isReady==='function'&&app.isReady()&&session?.fromPartition
+  ?session.fromPartition('agnovexa-one-official-api'):null;
+ const request=typeof netSession?.fetch==='function'?netSession.fetch.bind(netSession):fetch;
+ const res=await request(url, {headers:{Authorization:'Bearer '+key,Accept:'application/json'},
+  credentials:'omit',signal:AbortSignal.timeout(15000),cache:'no-store',redirect:'error'});
  if (!res.ok) throw new Error(res.status===401 || res.status===403 ? '凭证错误或权限不足，请检查密钥类型' : '平台请求失败（HTTP '+res.status+'）');
  return res.json();
 }
@@ -203,6 +224,9 @@ function notifyQuota(payload){
   };
   saveWidgetAccounts(list.some(x=>x.id===p.id)?
    list.map(x=>x.id===p.id?{...x,...account}:x):[...list,account]);
+  // Only newly authorized provider sessions are automatically grouped under
+  // the CURRENT verified Google identity; pre-existing sessions need explicit consent.
+  // Explicit consent is required before grouping an existing provider with Google.
   // Successful first account read completes the flow without requiring another click.
   const dashboard=BrowserWindow.getAllWindows().find(w=>
    !w.isDestroyed()&&!w.webContents.isDestroyed()&&w.webContents.getURL().includes('index.html'));
@@ -274,6 +298,7 @@ ipcMain.handle('quota:connect',async(_,kind,id,key,relay)=>{
  const safeRelay=kind==='relay'?relayConfig(relay):null;
  const value=await fetchLive(kind,key.trim(),safeRelay);
  const secrets=loadSecrets();secrets[id]={kind,cipher:await encrypt(key.trim()),...(safeRelay?{relay:safeRelay}:{})};saveSecrets(secrets);
+ // An API key is not proof that it belongs to the signed-in Google account.
  return value;
 });
 ipcMain.handle('quota:refresh',async(_,kind,id)=>{
@@ -667,7 +692,15 @@ app.whenReady().then(()=>{
   dataDir,safeStorage,shell,onChange:broadcastIdentity,
   fetchImpl:(url,init)=>googleOAuthNetwork.fetch(url,{...init,credentials:'omit'})
  });
+ accountLinks=createAccountLinks({
+  dataDir,safeStorage,getGoogleSubject:()=>googleIdentity?.getSubject(),
+  knownAccounts:()=>[
+   ...Object.keys(loadSecrets()).filter(id=>supported.has(loadSecrets()[id]?.kind)),
+   ...Object.keys((()=>{try{return JSON.parse(fs.readFileSync(path.join(dataDir,'quota-web-bindings.json'),'utf8'))}catch{return {}}})())
+  ]
+ });
  webQuota.register({dir:dataDir,onUpdate:notifyQuota});
+ setTimeout(()=>void refreshConnectedApiAccounts(),15000).unref?.();
  setInterval(()=>void refreshConnectedApiAccounts(),90000).unref?.();
  setupTray();
  if(process.argv.includes('--dashboard'))createWindow();else createWidget();

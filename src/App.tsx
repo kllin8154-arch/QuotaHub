@@ -80,7 +80,7 @@ function ProviderCard({ data, isDemo, onEdit, onRefresh }: { data: Provider; isD
   </div>
   {!!data.updatedAt && <div className="provider-source-tag">{data.error?'采集暂停 · 显示最后成功值':'最近采集 '+new Date(data.updatedAt).toLocaleString('zh-CN')}</div>}
   <div className="card-bottom">
-   <div className="status-with-dot"><span className={'dot ' + (isDemo ? 'dot-demo' : data.webMonitored||data.connected ? 'dot-online' : hasData ? 'dot-manual' : 'dot-off')}></span>{data.webMonitored?'网页监测':data.connected?'API 同步':hasData?'手动记录':'尚未配置'}</div>
+   <div className="status-with-dot"><span className={'dot ' + (isDemo ? 'dot-demo' : data.error ? 'dot-off' : data.webMonitored||data.connected ? 'dot-online' : hasData ? 'dot-manual' : 'dot-off')}></span>{data.error?'采集异常':data.webMonitored?'网页监测':data.connected?'API 同步':hasData?'手动记录':'尚未配置'}</div>
    <button onClick={() => onEdit(data)} className="card-link">{data.connected||data.webMonitored ? '已绑定' : '绑定 / 管理'} <ArrowUpRight size={15}/></button>
   </div>
  </article>
@@ -104,6 +104,7 @@ function App() {
  const [sidebar, setSidebar] = useState(false)
  const [historyRevision,setHistoryRevision] = useState(0)
  const [identityOpen,setIdentityOpen]=useState(false)
+ const [addDifferentAccount,setAddDifferentAccount]=useState(false)
  const [googleIdentity,setGoogleIdentity]=useState<GoogleIdentityState|null>(null)
  const [accountSyncReady,setAccountSyncReady] = useState(!window.quotaBridge)
  const [webCandidates,setWebCandidates] = useState<WebQuotaCandidate[]>([])
@@ -203,7 +204,7 @@ function App() {
   setDraft({...emptyDraft,kind:p.kind,name:p.name,account:p.account || '',category:p.category,metric:p.metric,value:p.value == null ? '' : String(p.value),limit:p.limit == null ? '' : String(p.limit),unit:p.unit,reset:p.reset || '',note:p.note || '',relayUrl:p.relay?.baseUrl||'',relayMode:p.relay?.mode||'newapi-account',relayUserId:p.relay?.userId||'',relayPath:p.relay?.path||'/api/user/self',relayField:p.relay?.field||'data.balance',relayUnit:p.relay?.unit||'额度点',relayDivisor:String(p.relay?.divisor||1)})
   setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
   setEditor({type:'edit',id:p.id});setSidebar(false)
-  if(desktop && ['chatgpt','deepseek'].includes(p.kind) && !p.webMonitored){
+  if(desktop && ['chatgpt','deepseek'].includes(p.kind) && !p.webMonitored && !p.connected){
    setWebStatus('官方额度页正在打开。登录完成后自动绑定，无需点击读取或保存。')
    void window.quotaBridge?.webOpen?.(p.kind,p.id).catch(e=>setWebStatus('打开页面失败：'+String(e)))
   }
@@ -212,14 +213,16 @@ function App() {
   const first = definitions.find(def => def.kind === 'relay')
   const info = first || definitions[0]
   setDraft({ ...emptyDraft, kind: first?.kind || 'custom', name:first?.name || '', category:info.category,metric:info.metric,unit:info.unit })
-  setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
+  setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);setAddDifferentAccount(false);
   setEditor({type:'new',id:'qh-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)});setSidebar(false)
  }
  function selectKind(kind: ProviderKind) {
+  setAddDifferentAccount(false)
   const info = definitions.find(x=>x.kind===kind)
   setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false)
   setDraft(p=>({...p,kind,name:info?.name || '',category:info?.category || 'API',metric:info?.metric || 'balance',unit:info?.unit || 'CNY'}))
-  if(desktop && editor?.id && ['chatgpt','deepseek'].includes(kind)){
+  const existing=items.find(p=>p.kind===kind&&(p.webMonitored||p.connected))
+  if(desktop && editor?.id && ['chatgpt','deepseek'].includes(kind)&&!(editor.type==='new'&&existing)){
    setWebStatus('官方额度页正在打开。登录完成后自动绑定并持续同步，不需要手动操作。')
    void window.quotaBridge?.webOpen?.(kind,editor.id).catch(e=>setWebStatus('打开页面失败：'+String(e)))
   }
@@ -285,9 +288,16 @@ function App() {
   const live = items.filter(p => p.webMonitored || p.connected && isLiveKind(p.kind))
   await Promise.all(live.map(p => refreshOne(p, true)))
   setRefreshing(false)
-  if (!quiet) setToast(live.length ? '已完成 ' + live.length + ' 个平台的同步' : '尚未连接可自动刷新的平台')
+  if (!quiet) setToast(live.length ? '已尝试刷新 ' + live.length + ' 个平台（失败项保留上次有效数据）' : '尚未连接可自动刷新的平台')
  }
  async function save() {
+  const samePlatform=editor?.type==='new'&&draft.kind!=='custom'&&draft.kind!=='relay'
+    ?items.find(p=>p.kind===draft.kind&&(p.connected||p.webMonitored)):undefined
+  if(samePlatform&&!addDifferentAccount){
+   edit(samePlatform)
+   setToast('已复用 '+samePlatform.name+' 原有授权，无需重复登录。若为另一个账号，可选择添加其他账号。')
+   return
+  }
   if (!draft.name.trim()) { setToast('请输入平台名称'); return }
   const value = draft.value.trim() === '' ? null : Number(draft.value)
   const limit = draft.limit.trim() === '' ? null : Number(draft.limit)
@@ -355,6 +365,8 @@ function App() {
   setToast('已导出额度记录（不包含密钥）')
  }
  function switchSection(next:Section) {setSection(next);setSidebar(false);setCategory('全部');setQuery('')}
+ const reusablePlatform=editor?.type==='new'&&draft.kind!=='relay'&&draft.kind!=='custom'
+   ?items.find(p=>p.kind===draft.kind&&(p.connected||p.webMonitored)):undefined
  const topCards = [...viewing].sort((a,b)=>Number(b.value!=null)-Number(a.value!=null)).slice(0,4)
  return <div className={'shell quota-refined tone-'+glassTone}>
   <aside className={'sidebar '+(sidebar?'sidebar-open':'')}>
@@ -396,7 +408,7 @@ function App() {
      <section className="stats-grid">
       <div className="stat-card"><div className="stat-heading"><span>已添加平台</span><span className="stat-icon"><LayoutDashboard size={18}/></span></div><div className="stat-value">{viewing.length.toString().padStart(2,'0')}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot lime"/> 多平台统一总览</div></div>
       <div className="stat-card"><div className="stat-heading"><span>已配置额度</span><span className="stat-icon"><Gauge size={18}/></span></div><div className="stat-value">{activeCount.toString().padStart(2,'0')}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot sky"/> 包含实时与手动记录</div></div>
-      <div className="stat-card"><div className="stat-heading"><span>实时连接</span><span className="stat-icon"><Cloud size={18}/></span></div><div className="stat-value">{connectedCount.toString().padStart(2,'0')}<span>个连接</span></div><div className="stat-foot"><span className="tiny-dot lime"/> 桌面端 / Android 支持安全连接</div></div>
+      <div className="stat-card"><div className="stat-heading"><span>实时连接</span><span className="stat-icon"><Cloud size={18}/></span></div><div className="stat-value">{connectedCount.toString().padStart(2,'0')}<span>个连接</span></div><div className="stat-foot"><span className="tiny-dot lime"/> 已授权采集源 · 90 秒巡检</div></div>
       <div className="stat-card"><div className="stat-heading"><span>额度预警</span><span className="stat-icon"><Bell size={18}/></span></div><div className="stat-value">{warnings.length.toString().padStart(2,'0')}<span>项需关注</span></div><div className="stat-foot"><span className={'tiny-dot '+(warnings.length?'coral':'lime')}/> {warnings.length?'超过 80% 的风险阈值':'所有已录入平台状态正常'}</div></div>
      </section>
      <div className="section-heading"><div><div className="section-kicker">平台与账号</div><h2>我的平台 <span className="heading-count">{viewing.length}</span></h2><p>追踪你最常用的平台和服务额度</p></div><div className="section-tools"><button className="text-button" onClick={()=>void refreshAll()}><RefreshCcw className={refreshing?'spin':''} size={16}/>刷新</button><button className="text-button" onClick={()=>switchSection('providers')}>查看全部 <ArrowRight size={16}/></button></div></div>
@@ -424,23 +436,36 @@ function App() {
     </>}
     {section==='settings' && <>
      <div className="page-title"><span className="section-kicker">外观与安全</span><h1>偏好设置<span className="title-dot">.</span></h1><p>本地优先、透明展示，不收集平台账号密码或聊天内容。</p></div>
-     <div className="settings-layout"><section className="settings-card"><h3><ShieldCheck size={20}/> 本地数据与安全</h3><p>平台名称、额度、备注保存在当前应用的本地数据目录。桌面端 API 密钥通过 Windows 系统加密能力加密；网页端不提供密钥存储。</p><div className="setting-line"><div><strong>运行模式</strong><small>{isAndroid?'Android 原生应用':desktop?'Windows Electron 桌面端':'网页 / 可安装 PWA'}</small></div><span className="setting-tag">{desktop?'桌面端':'网页端'}</span></div><div className="setting-line"><div><strong>自动监测账号</strong><small>包含官方 API 连接与已登录的网页额度监测账号</small></div><span className="setting-tag">{connectedCount} 个连接</span></div><div className="setting-line"><div><strong>后台采样</strong><small>每 90 秒尝试读取已绑定的 API 和已打开的官方额度网页；关闭窗口或重新登录可能暂停网页采样</small></div><span className="setting-tag">{desktop?'运行中':'桌面端可用'}</span></div>
+     <div className="settings-layout"><section className="settings-card"><h3><ShieldCheck size={20}/> 本地数据与安全</h3><p>平台名称、额度、备注保存在当前应用的本地数据目录。桌面端 API 密钥通过 Windows 系统加密能力加密；网页端不提供密钥存储。</p><div className="setting-line"><div><strong>运行模式</strong><small>{isAndroid?'Android 原生应用':desktop?'Windows Electron 桌面端':'网页 / 可安装 PWA'}</small></div><span className="setting-tag">{desktop?'桌面端':'网页端'}</span></div><div className="setting-line"><div><strong>自动监测账号</strong><small>包含官方 API 连接与已登录的网页额度监测账号</small></div><span className="setting-tag">{connectedCount} 个连接</span></div><div className="setting-line"><div><strong>后台采样</strong><small>每 90 秒尝试采集已授权的 API 与网页额度；程序运行时自动恢复有效会话，过期显示暂停并保留最后真实数值</small></div><span className="setting-tag">{desktop?'运行中':'桌面端可用'}</span></div>
       <div className="identity-settings-card">
-       <div><strong>身份与 Google 登录</strong><p>{googleIdentity?.profile?'已关联 '+googleIdentity.profile.email:'默认本地模式，可选用 Google 验证个人身份。不会读取邮箱或同步其他 AI 平台的登录会话。'}</p></div>
+       <div><strong>身份与平台账号</strong><p>{googleIdentity?.profile?'身份已验证 · 复用本机已授权平台，无需重复登录':'先使用 Google 验证身份，已有平台会话仍可独立恢复，不需要再次绑定'}</p></div>
        <button onClick={()=>setIdentityOpen(true)}>{googleIdentity?.profile?'管理身份':'设置 Google 登录'}</button>
       </div></section>
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.11.2</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.12.1</span><span>本地优先 · 安全管理</span></footer>
   </div>
-  <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}/>
+  <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}
+   knownProviders={items.filter(p=>p.connected||p.webMonitored).map(p=>({id:p.id,name:p.name,account:p.account}))}/>
   {editor && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget && !busy)setEditor(null)}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
    <div className="modal-header"><div><span className="section-kicker">账号管理</span><h2 id="modal-title">{editor.type==='new'?'绑定新的 AI 账号':'账号配置 · '+draft.name}</h2></div><button className="icon-button" onClick={()=>setEditor(null)} disabled={busy} title="关闭"><X size={21}/></button></div>
    <div className="modal-scroll">
     {editor.type==='new' && <label className="field"><span>平台类型</span><ReadableSelect ariaLabel="平台类型" value={draft.kind}
  options={[{value:'custom',label:'自定义平台'},...platformChoices.map(x=>({value:x.kind,label:x.name}))]}
  onChange={value=>selectKind(value as ProviderKind)} /></label>}
+    {reusablePlatform && editor.type==='new' && !addDifferentAccount && <div className="identity-reuse-banner">
+     <strong>已找到此平台的本机授权</strong>
+     <p>{reusablePlatform.name}{reusablePlatform.account?' · '+reusablePlatform.account:''} 已连接。可以直接复用原有登录和额度历史，不需要再次绑定同一账号。</p>
+     <div className="identity-reuse-actions">
+      <button type="button" onClick={()=>{edit(reusablePlatform);setToast('已复用已有平台账号')}}>使用已有账号</button>
+      <button type="button" onClick={()=>setAddDifferentAccount(true)}>这是另一个账号</button>
+     </div>
+    </div>}
+    {reusablePlatform && editor.type==='new' && addDifferentAccount && <div className="identity-reuse-banner">
+     <p>正在单独绑定另一个账号。它会使用独立会话，不覆盖现有平台登录与历史数据。</p>
+     <button type="button" onClick={()=>setAddDifferentAccount(false)}>改为使用已有账号</button>
+    </div>}
     <div className="modal-two"><label className="field"><span>平台名称</span><input value={draft.name} maxLength={60} onChange={e=>setDraft(p=>({...p,name:e.target.value}))} placeholder="例如 DeepSeek"/></label><label className="field"><span>服务类型</span><ReadableSelect ariaLabel="服务类型" value={draft.category}
  options={[{value:'API',label:'API 服务'},{value:'订阅',label:'订阅服务'}]}
  onChange={value=>setDraft(p=>({...p,category:value as 'API'|'订阅'}))} /></label></div>
@@ -465,7 +490,7 @@ function App() {
      </div>}
      <label className="field"><span>API Key {items.find(x=>x.id===editor?.id)?.connected?'（已连接；留空保持原连接）':''}</span><input type="password" value={secret} disabled={!desktop} autoComplete="off" spellCheck={false} placeholder={desktop?'输入密钥，保存时验证连接':'网页版禁用密钥输入'} onChange={e=>setSecret(e.target.value)}/></label>{!desktop && <div className="security-hint">请使用 Windows 桌面端或 Android 安装版进行安全自动连接。网页端仍可保存手动额度。</div>}</div>}
     {!isLiveKind(draft.kind)&&!['chatgpt','deepseek'].includes(draft.kind) && <div className="manual-note"><ShieldCheck size={17}/><span>此平台未提供适用于本应用的公开额度 API。你可以在下方打开官方网页，自行登录并授权读取页面上可见的额度。无需输入密码、Cookie 或令牌到 Agnovexa One。</span></div>}
-    {draft.kind!=='relay' && draft.kind!=='custom' && <section className="web-quota-panel">
+    {draft.kind!=='relay' && draft.kind!=='custom' && (!reusablePlatform||addDifferentAccount||editor.type!=='new') && <section className="web-quota-panel">
      <h3><Cloud size={18}/> 官方网页额度监测 <span className="setting-tag">90 秒采样</span></h3>
      <p>{['chatgpt','deepseek'].includes(draft.kind)?
       '只需在官方页面登录一次。登录后自动识别可见额度、关联账号并记录历史；关闭后重启也会尝试恢复会话。无法读取时不会编造数字。':
@@ -492,7 +517,7 @@ function App() {
     {editor.type==='edit' && items.find(x=>x.id===editor.id)?.error && <div className="error-hint">最近连接问题：{items.find(x=>x.id===editor.id)?.error}</div>}
     <div className="modal-links">{definitions.find(x=>x.kind===draft.kind) && <button onClick={()=>goTo(definitions.find(x=>x.kind===draft.kind)!.url)}><ExternalLink size={15}/> 打开官方平台</button>}{editor.type==='edit' && items.find(x=>x.id===editor.id)?.connected && <button onClick={()=>void disconnect()}><Wifi size={15}/> 断开密钥连接</button>}{editor.type==='edit' && <button className="remove-link" onClick={remove}>移除平台</button>}</div>
    </div>
-   <div className="modal-footer"><span><ShieldCheck size={16}/> 数据保存在本地</span><div><button className="modal-cancel" disabled={busy} onClick={()=>setEditor(null)}>取消</button><button className="primary-button smaller" disabled={busy} onClick={()=>void save()}>{busy?'正在验证...':secret?'验证并保存':'保存配置'} <Check size={17}/></button></div></div>
+   <div className="modal-footer"><span><ShieldCheck size={16}/> 数据保存在本地</span><div><button className="modal-cancel" disabled={busy} onClick={()=>setEditor(null)}>取消</button><button className="primary-button smaller" disabled={busy} onClick={()=>void save()}>{busy?'正在验证...':reusablePlatform&&editor.type==='new'&&!addDifferentAccount?'复用已有账号':secret?'验证并保存':'保存配置'} <Check size={17}/></button></div></div>
   </div></div>}
   {toast && <div role="status" className="toast"><span className="toast-icon"><Activity size={17}/></span>{toast}<button onClick={()=>setToast('')} aria-label="关闭提示"><X size={16}/></button></div>}
  </div>

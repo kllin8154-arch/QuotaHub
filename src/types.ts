@@ -1,5 +1,6 @@
 export type GoogleIdentityState = {configured:boolean;clientSecretConfigured?:boolean;secureStorage:boolean;busy:boolean;
   profile:{provider:'google';name:string;email:string;emailVerified:true;linkedAt:string;persisted:boolean}|null}
+export type PlatformLinksStatus = {verified:boolean;linked:string[];unlinked:string[];linkedCount:number;availableCount:number;conflictCount:number}
 export type ProviderKind = 'deepseek' | 'openai-api' | 'openrouter' | 'chatgpt' | 'claude' | 'gemini' | 'siliconflow' | 'qwen' | 'kimi' | 'zhipu' | 'cursor' | 'custom' | 'relay'
 export type Metric = 'balance' | 'usage' | 'spend'
 export type RelayConfig = { baseUrl: string; mode: 'newapi-account' | 'newapi-key' | 'custom'; userId?: string; path?: string; field?: string; unit?: string; divisor?: number }
@@ -18,6 +19,9 @@ export type Bridge = { connect:(kind:'deepseek'|'openai-api'|'openrouter'|'relay
  history?:(id:string)=>Promise<QuotaHistoryPoint[]>;
  historyRecord?:(point:{id:string;value:number;metric:Metric;unit:string;source:'manual'|'api';limit?:number|null})=>Promise<boolean>;
  identityStatus?:()=>Promise<GoogleIdentityState>;
+ platformLinks?:()=>Promise<PlatformLinksStatus>;
+ linkExistingAccounts?:(ids:string[])=>Promise<PlatformLinksStatus>;
+ unlinkExistingAccounts?:(ids:string[])=>Promise<PlatformLinksStatus>;
  googleConfigure?:(clientId:string)=>Promise<GoogleIdentityState>;
  googleImportOAuthJson?:()=>Promise<GoogleIdentityState>;
  googleSignIn?:()=>Promise<GoogleIdentityState>;

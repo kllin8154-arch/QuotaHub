@@ -223,6 +223,6 @@ function createGoogleIdentity(options){
   finish(pending);
   return true;
  }
- return {status,configure,importClientJSONFile,signIn,signOut,cancel,getClientId};
+ return {status,configure,importClientJSONFile,signIn,signOut,cancel,getClientId,getSubject:()=>identity?.sub||null};
 }
 module.exports={createGoogleIdentity,validClientId,challengeFor,SCOPES};

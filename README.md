@@ -96,3 +96,7 @@ QuotaHub 是本地优先的 AI 平台额度看板，具有 Windows 玻璃态桌�
 A Google Desktop OAuth JSON file can be renamed, for example Agnovexa-One-Google-OAuth-Desktop.json. Configure only its client_id locally. Never commit client_secret JSON or user-data folders.
 
 Google OAuth network repair and callback behavior: see [GOOGLE-OAUTH.md](GOOGLE-OAUTH.md). The v0.11.1 desktop hotfix uses system proxy settings for Google verification.
+
+## Existing-account reuse
+
+See [ACCOUNT-LINKS.md](ACCOUNT-LINKS.md). Google login is identity only. Existing platform login sessions are restored locally; new service authorizations remain independent. Google identity can group user-confirmed existing accounts without asking them to log in again.
