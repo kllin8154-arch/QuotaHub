@@ -5,7 +5,8 @@ import type { Provider, ProviderKind, LiveResult, Metric } from './types'
 import { definitions } from './catalog'
 import ReadableSelect from './ReadableSelect'
 import HistoryChart from './HistoryChart'
-import type { WebQuotaCandidate } from './types'
+import IdentityPanel from './IdentityPanel'
+import type { WebQuotaCandidate, GoogleIdentityState } from './types'
 import type { RelayConfig } from './types'
 
 type Section = 'overview' | 'providers' | 'insights' | 'settings'
@@ -102,6 +103,8 @@ function App() {
  const [toast, setToast] = useState('')
  const [sidebar, setSidebar] = useState(false)
  const [historyRevision,setHistoryRevision] = useState(0)
+ const [identityOpen,setIdentityOpen]=useState(false)
+ const [googleIdentity,setGoogleIdentity]=useState<GoogleIdentityState|null>(null)
  const [accountSyncReady,setAccountSyncReady] = useState(!window.quotaBridge)
  const [webCandidates,setWebCandidates] = useState<WebQuotaCandidate[]>([])
  const [selectedWeb,setSelectedWeb] = useState('')
@@ -119,6 +122,13 @@ function App() {
  const nextReset = viewing.filter(x => x.reset && new Date(x.reset).getTime() >= Date.now()).sort((a,b) => (a.reset || '').localeCompare(b.reset || ''))[0]
  const platformChoices = definitions
  useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(items)) } catch {} }, [items])
+ useEffect(()=>{
+  let mounted=true
+  if(!window.quotaBridge?.identityStatus)return
+  void window.quotaBridge.identityStatus().then(state=>{if(mounted)setGoogleIdentity(state)}).catch(()=>{})
+  const unsubscribe=window.quotaBridge.onIdentity?.(state=>{if(mounted)setGoogleIdentity(state)})
+  return ()=>{mounted=false;unsubscribe?.()}
+ },[])
  useEffect(() => {
    if(!accountSyncReady||!window.quotaBridge?.updateWidgetAccounts)return
    void window.quotaBridge.updateWidgetAccounts(items.map(p=>({
@@ -369,7 +379,10 @@ function App() {
       <button title="烟灰" aria-label="烟灰玻璃" className={glassTone==='smoke'?'selected':''} onClick={()=>setGlassTone('smoke')}><i className="tone-dot smoke"/></button>
       <button title="冰白" aria-label="冰白玻璃" className={glassTone==='clear'?'selected':''} onClick={()=>setGlassTone('clear')}><i className="tone-dot clear"/></button>
       <button title="暖灰" aria-label="暖灰玻璃" className={glassTone==='warm'?'selected':''} onClick={()=>setGlassTone('warm')}><i className="tone-dot warm"/></button>
-    </div><span className="topbar-mode"><span className="pulse-dot"/>{isAndroid?'Android Connected':desktop?'Desktop Connected':'Web Preview'}</span><button className="icon-button top-icon" title="帮助" onClick={()=>switchSection('settings')}><CircleHelp size={20}/></button><button className="icon-button top-icon" title="查看需要关注的平台" onClick={()=>{switchSection('providers');setCategory('需关注')}}><Bell size={19}/>{warnings.length>0 && <span className="notif-dot"/>}</button><div className="top-avatar"><Wallet size={17}/></div></div>
+    </div><span className="topbar-mode"><span className="pulse-dot"/>{isAndroid?'Android Connected':desktop?'Desktop Connected':'Web Preview'}</span><button className="icon-button top-icon" title="帮助" onClick={()=>switchSection('settings')}><CircleHelp size={20}/></button><button className="icon-button top-icon" title="查看需要关注的平台" onClick={()=>{switchSection('providers');setCategory('需关注')}}><Bell size={19}/>{warnings.length>0 && <span className="notif-dot"/>}</button><button className="identity-account-trigger" title="身份与 Google 登录" onClick={()=>setIdentityOpen(true)}>
+      {googleIdentity?.profile?<img src="./google-mark.svg" alt=""/>:<ShieldCheck size={17}/>}
+      <span>{googleIdentity?.profile?.name||'本地模式'}</span>
+     </button></div>
    </header>
    <main className="main">
     {section==='overview' && <>
@@ -411,12 +424,17 @@ function App() {
     </>}
     {section==='settings' && <>
      <div className="page-title"><span className="section-kicker">外观与安全</span><h1>偏好设置<span className="title-dot">.</span></h1><p>本地优先、透明展示，不收集平台账号密码或聊天内容。</p></div>
-     <div className="settings-layout"><section className="settings-card"><h3><ShieldCheck size={20}/> 本地数据与安全</h3><p>平台名称、额度、备注保存在当前应用的本地数据目录。桌面端 API 密钥通过 Windows 系统加密能力加密；网页端不提供密钥存储。</p><div className="setting-line"><div><strong>运行模式</strong><small>{isAndroid?'Android 原生应用':desktop?'Windows Electron 桌面端':'网页 / 可安装 PWA'}</small></div><span className="setting-tag">{desktop?'桌面端':'网页端'}</span></div><div className="setting-line"><div><strong>自动监测账号</strong><small>包含官方 API 连接与已登录的网页额度监测账号</small></div><span className="setting-tag">{connectedCount} 个连接</span></div><div className="setting-line"><div><strong>后台采样</strong><small>每 90 秒尝试读取已绑定的 API 和已打开的官方额度网页；关闭窗口或重新登录可能暂停网页采样</small></div><span className="setting-tag">{desktop?'运行中':'桌面端可用'}</span></div></section>
+     <div className="settings-layout"><section className="settings-card"><h3><ShieldCheck size={20}/> 本地数据与安全</h3><p>平台名称、额度、备注保存在当前应用的本地数据目录。桌面端 API 密钥通过 Windows 系统加密能力加密；网页端不提供密钥存储。</p><div className="setting-line"><div><strong>运行模式</strong><small>{isAndroid?'Android 原生应用':desktop?'Windows Electron 桌面端':'网页 / 可安装 PWA'}</small></div><span className="setting-tag">{desktop?'桌面端':'网页端'}</span></div><div className="setting-line"><div><strong>自动监测账号</strong><small>包含官方 API 连接与已登录的网页额度监测账号</small></div><span className="setting-tag">{connectedCount} 个连接</span></div><div className="setting-line"><div><strong>后台采样</strong><small>每 90 秒尝试读取已绑定的 API 和已打开的官方额度网页；关闭窗口或重新登录可能暂停网页采样</small></div><span className="setting-tag">{desktop?'运行中':'桌面端可用'}</span></div>
+      <div className="identity-settings-card">
+       <div><strong>身份与 Google 登录</strong><p>{googleIdentity?.profile?'已关联 '+googleIdentity.profile.email:'默认本地模式，可选用 Google 验证个人身份。不会读取邮箱或同步其他 AI 平台的登录会话。'}</p></div>
+       <button onClick={()=>setIdentityOpen(true)}>{googleIdentity?.profile?'管理身份':'设置 Google 登录'}</button>
+      </div></section>
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AI QUOTA HUB / v0.1.0</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AI QUOTA HUB / v0.10.0</span><span>本地优先 · 安全管理</span></footer>
   </div>
+  <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}/>
   {editor && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget && !busy)setEditor(null)}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
    <div className="modal-header"><div><span className="section-kicker">账号管理</span><h2 id="modal-title">{editor.type==='new'?'绑定新的 AI 账号':'账号配置 · '+draft.name}</h2></div><button className="icon-button" onClick={()=>setEditor(null)} disabled={busy} title="关闭"><X size={21}/></button></div>
    <div className="modal-scroll">

@@ -5,11 +5,26 @@ const https = require('node:https');
 const dns = require('node:dns');
 const net = require('node:net');
 const webQuota = require('./webQuota.cjs');
+const { createGoogleIdentity } = require('./googleIdentity.cjs');
 const dataDir = process.env.AIQUOTA_DATA_DIR || path.join(app.getPath('userData'), 'local-data');
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
 app.setAppUserModelId('com.aiquotahub.desktop');
 const secretsPath = path.join(dataDir, 'secrets.json');
+let googleIdentity = null;
+function broadcastIdentity(status){
+ for(const window of BrowserWindow.getAllWindows()){
+  if(!window.isDestroyed()&&!window.webContents.isDestroyed()&&window.webContents.getURL().includes('index.html')){
+   window.webContents.send('identity:changed',status);
+  }
+ }
+}
+ipcMain.handle('identity:status',()=>googleIdentity?.status()||{
+ configured:false,secureStorage:false,busy:false,profile:null});
+ipcMain.handle('identity:configure',(_event,id)=>googleIdentity?.configure(id));
+ipcMain.handle('identity:signIn',()=>googleIdentity?.signIn());
+ipcMain.handle('identity:signOut',()=>googleIdentity?.signOut());
+ipcMain.handle('identity:cancel',()=>googleIdentity?.cancel());
 const widgetAccountsPath = path.join(dataDir,'widget-accounts.json');
 function cleanWidgetAccounts(list) {
  if(!Array.isArray(list))return [];
@@ -39,7 +54,7 @@ function saveWidgetAccounts(accounts) {
 }
 
 const supported = new Set(['deepseek', 'openai-api', 'openrouter','relay']);
-const allowedHosts = new Set(['platform.deepseek.com','chatgpt.com','platform.openai.com','claude.ai','gemini.google.com','cloud.siliconflow.cn','openrouter.ai','bailian.console.aliyun.com','www.kimi.com','open.bigmodel.cn','cursor.com','docs.newapi.ai']);
+const allowedHosts = new Set(['platform.deepseek.com','chatgpt.com','platform.openai.com','claude.ai','gemini.google.com','cloud.siliconflow.cn','openrouter.ai','bailian.console.aliyun.com','www.kimi.com','open.bigmodel.cn','cursor.com','docs.newapi.ai','console.cloud.google.com']);
 function loadSecrets() { try { const x=JSON.parse(fs.readFileSync(secretsPath,'utf8')); return x && typeof x==='object' && !Array.isArray(x) ? x : {}; } catch { return {}; } }
 function saveSecrets(state) { const temp=secretsPath+'.tmp'; fs.writeFileSync(temp, JSON.stringify(state), {mode:0o600}); fs.renameSync(temp,secretsPath); }
 function verify(kind,id) {
@@ -638,6 +653,7 @@ ipcMain.handle('widget:toggle',()=>setCollapsed(!widgetSettings.collapsed,widget
 ipcMain.handle('widget:setCollapseMode',(_,mode)=>setCollapseMode(mode));
 ipcMain.handle('widget:dashboard',()=>{createWindow();return true});
 app.whenReady().then(()=>{
+ googleIdentity=createGoogleIdentity({dataDir,safeStorage,shell,onChange:broadcastIdentity});
  webQuota.register({dir:dataDir,onUpdate:notifyQuota});
  setInterval(()=>void refreshConnectedApiAccounts(),90000).unref?.();
  setupTray();
@@ -648,6 +664,7 @@ app.whenReady().then(()=>{
 });
 
 app.on('before-quit',()=>{
+ googleIdentity?.cancel();
  // Persist DOM storage before Electron closes the web session partitions.
  webQuota.flushPersistentSessions();
  webQuota.shutdown();

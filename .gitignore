@@ -47,3 +47,8 @@ android/captures/
 *.apk
 *.aab
 *.aar
+
+**/google-oauth-client.json
+**/google-identity.enc
+**/google-identity.enc.tmp
+**/google-oauth-client.json.tmp

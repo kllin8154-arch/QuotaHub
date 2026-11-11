@@ -60,6 +60,16 @@ The Android project is an independent client; it does not automatically inherit 
 | android/ | Native Capacitor Android project; generated web assets are excluded |
 | tests/ | Synthetic quota parser and capture regression tests |
 
+## Google identity sign-in (optional desktop feature)
+
+The Windows Electron edition optionally supports Google identity verification using OAuth 2.0 Authorization Code with PKCE, the system browser, and a 127.0.0.1 loopback callback.
+
+Publisher setup (once): create an OAuth 2.0 client with application type Desktop app at https://console.cloud.google.com/auth/clients. Set up the consent screen (and test users when in Testing mode). In QuotaHub use Identity & Sign-in > Application OAuth settings to enter the Desktop Client ID. Alternatively supply QUOTAHUB_GOOGLE_CLIENT_ID as a process environment variable. A Desktop Client ID is not a secret; do not commit any access tokens, passwords or local identity records.
+
+End users can then choose Continue with Google. The feature asks for openid, email and profile only. Authorization code and access token stay in memory and are discarded; a verified identity snapshot is stored locally using Electron safeStorage encryption, where available. Logging out removes that local association, without deleting AI platform balances or session profiles.
+
+This is local identity linking, NOT a cloud account, cross-device sync or permission to fetch other AI providers' balances. Google sign-in for Web/Android is not yet enabled. Their existing local mode remains functional.
+
 ## Privacy and security
 
 This public repository contains **source code only**, not real logins, API Keys, cookies, session backups, desktop usage history or local preferences. Users must never upload their persistent Chromium session profile or app data folder. Please see SECURITY.md.

@@ -1,0 +1,60 @@
+.identity-overlay{position:fixed;inset:0;z-index:140;display:grid;place-items:center;padding:18px;background:rgba(8,14,22,.68);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.identity-dialog{width:min(100%,496px);max-height:min(94vh,780px);overflow:hidden;display:flex;flex-direction:column;border-radius:21px;border:1px solid rgba(190,209,226,.25);background:linear-gradient(145deg,#293747 0%,#1b2838 58%,#182333 100%);box-shadow:0 28px 80px rgba(3,8,16,.48);color:#f4f7fc}
+.identity-head{padding:24px 27px 19px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid rgba(198,215,231,.12)}
+.identity-head span{color:#a6b9cd;font-size:11px;font-weight:650;letter-spacing:.07em}
+.identity-head h2{font-size:21px;letter-spacing:-.5px;margin:6px 0 0;font-weight:750}
+.identity-icon-button{background:transparent;border:0;color:#acbecf;display:grid;place-items:center;width:30px;height:30px;border-radius:9px}
+.identity-icon-button:hover{background:rgba(255,255,255,.1);color:#fff}
+.identity-body{padding:23px 27px;overflow-y:auto;scrollbar-width:thin}
+.identity-local{display:flex;gap:13px;align-items:center;padding:16px;border:1px solid rgba(157,180,201,.21);border-radius:13px;background:rgba(255,255,255,.04)}
+.identity-local-icon{width:39px;height:39px;border-radius:11px;background:rgba(130,168,192,.16);color:#baded7;display:grid;place-items:center;flex-shrink:0}
+.identity-local strong,.identity-subhead strong{font-weight:700;font-size:13.5px}
+.identity-local p{margin:5px 0 0;color:#b4c5d6;font-size:12px;line-height:1.6}
+.identity-check{margin-left:auto;color:#90dbc3;flex-shrink:0}
+.identity-login-section{margin:25px 1px 20px}
+.identity-subhead p{margin:7px 0 17px;font-size:12px;color:#b7c9da;line-height:1.7}
+.identity-google-button{display:flex;width:100%;justify-content:center;align-items:center;gap:12px;height:46px;border-radius:12px;border:1px solid #c7d7e8;background:#f5f8fb;color:#263343;font-size:13.5px;font-weight:700;transition:background .18s,border-color .18s}
+.identity-google-button:hover:not(:disabled){background:#fff;border-color:#fff}
+.identity-google-button:disabled{opacity:.62;cursor:not-allowed}
+.identity-help{margin:12px 0 0;color:#c9d8e6;font-size:11.5px;line-height:1.7}
+.identity-setup{border-top:1px solid rgba(255,255,255,.12);margin-top:19px;padding-top:16px}
+.identity-setup-trigger{width:100%;display:flex;align-items:center;gap:9px;background:transparent;color:#c3d0dd;border:0;padding:6px 0;text-align:left;font-size:12px}
+.identity-setup-trigger span{margin-left:auto;font-size:11px;color:#a3b6c9}
+.identity-setup-content{padding:15px;border:1px solid #485d70;border-radius:11px;background:#202e3d;margin-top:9px}
+.identity-setup-content p{margin:0 0 13px;color:#c4d0de;font-size:11.5px;line-height:1.7}
+.identity-setup-content label{display:block;font-size:11px;margin-bottom:7px;color:#dbe5f0;font-weight:600}
+.identity-setup-content input{width:100%;height:42px;min-width:0;background:#293b4e;border:1px solid #60778e;border-radius:8px;padding:0 12px;color:#f7fafd;font-size:12px;outline:none}
+.identity-setup-content input:focus{border-color:#a2c4e6}
+.identity-setup-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:13px}
+.identity-outline-button,.identity-save-button,.identity-text-button{border-radius:9px;font-size:12px;min-height:36px;padding:8px 12px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:650}
+.identity-outline-button{color:#e6eef9;background:#32465c;border:1px solid #657e95}
+.identity-outline-button:hover{background:#425b75}
+.identity-save-button{color:#172533;background:#d5e3ed;border:1px solid #dbe9f4}
+.identity-save-button:hover{background:#ecf4fa}
+.identity-text-button{color:#e9c3c8;background:transparent;border:1px solid rgba(216,154,163,.3)}
+.identity-profile{padding:20px;border:1px solid #526579;background:rgba(91,119,145,.13);border-radius:13px;margin:24px 0 18px}
+.identity-profile-top{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:650;color:#c4d5e7}
+.identity-profile-top img{background:#f9fbff;border-radius:50%;padding:4px}
+.identity-profile h3{margin:14px 0 4px;font-size:18px;line-height:1.4}
+.identity-email{font-size:12px;color:#bacad9;margin:0}
+.identity-verified{display:flex;align-items:center;gap:7px;color:#a8e5d3;font-size:11px;margin-top:16px}
+.identity-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
+.identity-error{border-radius:9px;border:1px solid #b45d67;background:rgba(125,46,61,.16);color:#ffcbd3;font-size:12px;line-height:1.6;margin-top:15px;padding:11px 13px}
+.identity-disclaimer{display:flex;gap:10px;align-items:flex-start;padding:14px 0 4px;color:#a6bbcf}
+.identity-disclaimer svg{margin-top:2px;flex-shrink:0}
+.identity-disclaimer p{font-size:11px;line-height:1.7;margin:0}
+.identity-foot{border-top:1px solid rgba(200,214,226,.15);padding:16px 27px 20px;display:flex;justify-content:flex-end}
+.identity-local-button{display:inline-flex;align-items:center;gap:8px;background:#45586c;border:1px solid #72859a;color:#fff;border-radius:10px;height:39px;padding:0 16px;font-size:12px;font-weight:700}
+.identity-local-button:hover{background:#536b83}
+.identity-spin{animation:identity-rotate 1s linear infinite}
+@keyframes identity-rotate{to{transform:rotate(360deg)}}
+.identity-account-trigger{border:1px solid rgba(193,212,231,.23);background:rgba(255,255,255,.035);border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:center;color:#e8f0fa;font-size:11px;font-weight:650;max-width:190px}
+.identity-account-trigger:hover{background:rgba(255,255,255,.1)}
+.identity-account-trigger img{width:18px;height:18px;background:#f6faff;border-radius:50%;padding:2px}
+.identity-account-trigger span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.identity-settings-card{display:flex;gap:15px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:13px;padding:14px;border:1px solid rgba(150,168,187,.25);border-radius:12px;background:rgba(255,255,255,.035)}
+.identity-settings-card>div{flex:1;min-width:160px}
+.identity-settings-card strong{font-size:13px}
+.identity-settings-card p{font-size:11px;color:#adbfd1;line-height:1.6;margin:5px 0 0}
+.identity-settings-card button{border:1px solid #70849b;border-radius:9px;background:#34475b;color:#f5f9fc;padding:10px 12px;font-size:11.5px;font-weight:700}
+@media(max-width:680px){.identity-dialog{border-radius:16px}.identity-head{padding:20px}.identity-body{padding:18px}.identity-foot{padding:14px 18px}.identity-account-trigger{padding:8px}.identity-account-trigger span{display:none}}
