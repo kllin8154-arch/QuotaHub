@@ -836,7 +836,7 @@ function renderNativeAccounts(all) {
   const row=document.createElement('div');row.className='w-row';
   const health=nativeHealth(p);
   if(health==='delayed'||health==='error')row.classList.add('is-stale');
-  if(p.syncError)row.title='采集暂停 · '+p.syncError.slice(0,160);
+  if(p.syncError)row.title='采集暂停，已保留最后成功数据；请检查平台官网或网络后刷新。';
   else if(health==='delayed')row.title='数据已超过 5 分钟未成功更新';
   const logo=document.createElement('div');logo.className='provider-icon';
   const kind=['chatgpt','openai-api'].includes(p.kind)?'openai':p.kind;

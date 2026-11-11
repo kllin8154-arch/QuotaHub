@@ -189,3 +189,6 @@
 .quota-refined.tone-clear .provider-source-tag.source-delayed{color:#99613a}
 .quota-refined .provider-source-tag.source-pending{color:var(--qh-subtle)}
 .quota-refined .status-with-dot{font-variant-numeric:tabular-nums}
+
+/* Safe, concise quota sampling diagnostics. */
+.sync-diagnostic { margin: 0 0 10px; padding: 8px 10px; border: 1px solid rgba(120,130,145,.18); border-radius: 9px; font-size: 12px; line-height: 1.55; color: var(--text-secondary, #667085); overflow-wrap: anywhere; }

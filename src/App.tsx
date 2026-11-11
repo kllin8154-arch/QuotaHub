@@ -5,7 +5,7 @@ import type { Provider, ProviderKind, LiveResult, Metric } from './types'
 import { definitions } from './catalog'
 import ReadableSelect from './ReadableSelect'
 import HistoryChart from './HistoryChart'
-import { syncHealth, lastSampleText } from './syncHealth'
+import { syncHealth, lastSampleText, syncDiagnostic, safeErrorText } from './syncHealth'
 import IdentityPanel from './IdentityPanel'
 import type { WebQuotaCandidate, GoogleIdentityState } from './types'
 import type { RelayConfig } from './types'
@@ -62,6 +62,7 @@ function ProviderCard({ data, isDemo, onEdit, onRefresh, now }: { data: Provider
  const ratio = data.value != null && data.limit != null && data.limit > 0 ? Math.min(100, Math.max(0, data.value / data.limit * 100)) : null
  const hasData = data.value != null
  const health = syncHealth(data,now)
+ const diagnostic = syncDiagnostic(data,now)
  const syncLabel = health==='error'?'采集异常':health==='delayed'?'数据已过期':health==='pending'?'等待首次同步'
    :health==='healthy'?'同步正常':hasData?'手动记录':'尚未配置'
  const sourceLabel = health==='error'?'采集暂停 · '+lastSampleText(data.updatedAt,now):
@@ -86,11 +87,12 @@ function ProviderCard({ data, isDemo, onEdit, onRefresh, now }: { data: Provider
    {ratio !== null ? <><div className="progress-track"><div style={{ width: ratio + '%' }}/></div><div className="progress-hint"><span>{data.metric === 'balance' ? '剩余占参考上限' : '已用占参考上限'} {Math.round(ratio)}%</span><span>参考 {formatNumber(data.limit!)}</span></div></> : <div className="progress-empty">{hasData ? '未设置参考上限' : '配置后即可开始追踪'}</div>}
   </div>
   {(data.updatedAt||health==='pending') && <div className={'provider-source-tag source-'+health}
-   title={data.error||'最近成功数据：'+(data.updatedAt?new Date(data.updatedAt).toLocaleString('zh-CN'):'尚无')}>
+   title={diagnostic||'最近成功数据：'+(data.updatedAt?new Date(data.updatedAt).toLocaleString('zh-CN'):'尚无')}>
    {sourceLabel}{health==='delayed'||health==='error'?' · 非实时':''}
   </div>}
+  {diagnostic && !isDemo && <div className="sync-diagnostic" role="status">{diagnostic}</div>}
   <div className="card-bottom">
-   <div className="status-with-dot" title={data.error||syncLabel}><span className={'dot ' + (isDemo?'dot-demo':health==='healthy'?'dot-online':health==='manual'&&hasData?'dot-manual':'dot-off')}></span>{syncLabel}</div>
+   <div className="status-with-dot" title={diagnostic||syncLabel}><span className={'dot ' + (isDemo?'dot-demo':health==='healthy'?'dot-online':health==='manual'&&hasData?'dot-manual':'dot-off')}></span>{syncLabel}</div>
    <button onClick={() => onEdit(data)} className="card-link">{data.connected||data.webMonitored ? '已绑定' : '绑定 / 管理'} <ArrowUpRight size={15}/></button>
   </div>
  </article>
@@ -147,7 +149,7 @@ function App() {
  useEffect(() => {
    if(!accountSyncReady||!window.quotaBridge?.updateWidgetAccounts)return
    void window.quotaBridge.updateWidgetAccounts(items.map(p=>({
-    id:p.id,name:p.name,account:p.account,kind:p.kind,value:p.value,unit:p.unit,metric:p.metric,updatedAt:p.updatedAt,connected:p.connected||p.webMonitored,webMonitored:p.webMonitored,source:p.source,error:p.error
+    id:p.id,name:p.name,account:p.account,kind:p.kind,value:p.value,unit:p.unit,metric:p.metric,updatedAt:p.updatedAt,connected:p.connected||p.webMonitored,webMonitored:p.webMonitored,source:p.source,error:p.error?safeErrorText(p.error):''
    }))).catch(()=>{})
  },[items,accountSyncReady])
 
@@ -211,7 +213,7 @@ function App() {
       source:p.source,webMonitored:p.source==='web'?true:x.webMonitored,updatedAt:p.at,error:''}:x))
     setHistoryRevision(n=>n+1)
    } else {
-    setItems(items=>items.map(x=>x.id===message.id?{...x,error:message.reason}:x))
+    setItems(items=>items.map(x=>x.id===message.id?{...x,error:safeErrorText(message.reason)}:x))
    }
   })
  },[])
@@ -221,7 +223,7 @@ function App() {
   setEditor({type:'edit',id:p.id});setSidebar(false)
   if(desktop && ['chatgpt','deepseek'].includes(p.kind) && !p.webMonitored && !p.connected){
    setWebStatus('官方额度页正在打开。登录完成后自动绑定，无需点击读取或保存。')
-   void window.quotaBridge?.webOpen?.(p.kind,p.id).catch(e=>setWebStatus('打开页面失败：'+String(e)))
+   void window.quotaBridge?.webOpen?.(p.kind,p.id).catch(e=>setWebStatus('打开页面失败：'+safeErrorText(e)))
   }
  }
  function add() {
@@ -239,7 +241,7 @@ function App() {
   const existing=items.find(p=>p.kind===kind&&(p.webMonitored||p.connected))
   if(desktop && editor?.id && ['chatgpt','deepseek'].includes(kind)&&!(editor.type==='new'&&existing)){
    setWebStatus('官方额度页正在打开。登录完成后自动绑定并持续同步，不需要手动操作。')
-   void window.quotaBridge?.webOpen?.(kind,editor.id).catch(e=>setWebStatus('打开页面失败：'+String(e)))
+   void window.quotaBridge?.webOpen?.(kind,editor.id).catch(e=>setWebStatus('打开页面失败：'+safeErrorText(e)))
   }
  }
  async function openWebUsage(){
@@ -250,7 +252,7 @@ function App() {
    setWebStatus(['chatgpt','deepseek'].includes(draft.kind)?
       '仅需在官网登录。Agnovexa One 会自动识别额度、关联账号并定时记录变化。':
       '在官方网页登录后，可点击读取页面额度。')
-  }catch(e){setWebError(true);setWebStatus(e instanceof Error?e.message:String(e))}
+  }catch(e){setWebError(true);setWebStatus(safeErrorText(e))}
   finally{setWebBusy(false)}
  }
  async function readWebUsage(){
@@ -260,7 +262,7 @@ function App() {
    const result=await window.quotaBridge.webRead(draft.kind,editor.id)
    setWebCandidates(result.candidates);setSelectedWeb('')
    setWebStatus('找到 '+result.candidates.length+' 项候选数据。请选择对应的余额或用量指标，保存后每 90 秒尝试同步。')
-  }catch(e){setWebError(true);setWebStatus(e instanceof Error?e.message:String(e));setWebCandidates([])}
+  }catch(e){setWebError(true);setWebStatus(safeErrorText(e));setWebCandidates([])}
   finally{setWebBusy(false)}
  }
  async function stopWebMonitor(){
@@ -269,7 +271,7 @@ function App() {
    await window.quotaBridge.webUnbind(editor.id)
    updateProvider(editor.id,{webMonitored:false,error:'',connected:false})
    setSelectedWeb('');setWebCandidates([]);setWebStatus('已停止网页监测，并清理此账号的隔离网页登录会话。')
-  }catch(e){setToast('停止监测失败：'+String(e))}
+  }catch(e){setToast('停止监测失败：'+safeErrorText(e))}
  }
  function updateProvider(id: string, changes: Partial<Provider>) { setItems(list=>list.map(p=>p.id===id?{...p,...changes}:p)) }
  async function refreshOne(p: Provider, quiet=false) {
@@ -282,8 +284,8 @@ function App() {
     setHistoryRevision(n=>n+1)
     if(!quiet)setToast(p.name+' · 网页额度已更新')
    }catch(e){
-    const message=e instanceof Error?e.message:String(e)
-    updateProvider(p.id,{error:message.slice(0,180)})
+    const message=safeErrorText(e)
+    updateProvider(p.id,{error:message})
     if(!quiet)setToast(p.name+' · '+message)
    }
    return
@@ -296,7 +298,7 @@ function App() {
     metric:value.metric,source:'api',limit:p.limit}).then(()=>setHistoryRevision(n=>n+1)).catch(()=>{})
    if (!quiet) setToast(p.name + ' · 更新成功')
   } catch(e) {
-   const msg = e instanceof Error ? e.message : String(e)
+   const msg = safeErrorText(e)
    updateProvider(p.id, {error:msg})
    if (!quiet) setToast(p.name + ' · ' + msg)
   }
@@ -358,7 +360,7 @@ function App() {
    setEditor(null);setSecret('');setWebCandidates([]);setSelectedWeb('')
    setToast(webResult?'官网额度已绑定 · 每 90 秒自动监测':live?'安全连接成功 · 已获取实时数据':'已保存平台配置')
   } catch(e) {
-   setToast('连接失败 · ' + (e instanceof Error ? e.message : String(e)))
+   setToast('连接失败 · ' + safeErrorText(e))
   } finally { setBusy(false) }
  }
  async function disconnect() {
@@ -533,7 +535,7 @@ function App() {
      </div>}
      {selectedWeb && <div className="web-quota-status">已选定指标。点击底部「保存配置」即启用网页自动监测，并写入第一条真实历史记录。</div>}
     </section>}
-    {editor.type==='edit' && items.find(x=>x.id===editor.id)?.error && <div className="error-hint">最近连接问题：{items.find(x=>x.id===editor.id)?.error}</div>}
+    {editor.type==='edit' && items.find(x=>x.id===editor.id)?.error && <div className="error-hint">最近连接问题：{safeErrorText(items.find(x=>x.id===editor.id)?.error)}</div>}
     <div className="modal-links">{definitions.find(x=>x.kind===draft.kind) && <button onClick={()=>goTo(definitions.find(x=>x.kind===draft.kind)!.url)}><ExternalLink size={15}/> 打开官方平台</button>}{editor.type==='edit' && items.find(x=>x.id===editor.id)?.connected && <button onClick={()=>void disconnect()}><Wifi size={15}/> 断开密钥连接</button>}{editor.type==='edit' && <button className="remove-link" onClick={remove}>移除平台</button>}</div>
    </div>
    <div className="modal-footer"><span><ShieldCheck size={16}/> 数据保存在本地</span><div><button className="modal-cancel" disabled={busy} onClick={()=>setEditor(null)}>取消</button><button className="primary-button smaller" disabled={busy} onClick={()=>void save()}>{busy?'正在验证...':reusablePlatform&&editor.type==='new'&&!addDifferentAccount?'复用已有账号':secret?'验证并保存':'保存配置'} <Check size={17}/></button></div></div>
