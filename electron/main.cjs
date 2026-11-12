@@ -8,6 +8,7 @@ const webQuota = require('./webQuota.cjs');
 const { createGoogleIdentity } = require('./googleIdentity.cjs');
 const { createAccountLinks } = require('./accountLinks.cjs');
 const { createRefreshCoordinator } = require('./refreshCoordinator.cjs');
+const { createRetryGate } = require('./retryGate.cjs');
 const dataDir = process.env.AIQUOTA_DATA_DIR || path.join(app.getPath('userData'), 'local-data');
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
@@ -262,6 +263,7 @@ function notifyQuota(payload){
 ipcMain.handle('quota:updateWidgetAccounts',(_,accounts)=>saveWidgetAccounts(accounts));
 ipcMain.handle('widget:getAccounts',()=>getWidgetAccounts());
 let apiPolling=null;
+const apiRetryGate=createRetryGate();
 async function refreshConnectedApiAccounts(){
  if(apiPolling)return apiPolling;
  apiPolling=(async()=>{
@@ -269,14 +271,15 @@ async function refreshConnectedApiAccounts(){
   for(const p of accounts){
    const entry=creds[p.id];
    if(!entry?.cipher || entry.kind!==p.kind || !supported.has(entry.kind))continue;
-   if(webQuota.hasBinding(p.id))continue;
+   if(webQuota.hasBinding(p.id) || !apiRetryGate.allowed(p.id))continue;
    try{
     const result=await fetchLive(entry.kind,await decrypt(entry.cipher),entry.relay);
     const point={id:p.id,kind:p.kind,value:result.value,unit:result.unit,
       metric:result.metric,limit:p.limit,at:result.updatedAt||new Date().toISOString(),source:'api'};
     webQuota.record(point);
+    apiRetryGate.succeeded(p.id);
     notifyQuota({type:'snapshot',point});
-   }catch(err){notifyQuota({type:'stale',id:p.id,reason:'官方 API 暂时无法同步'})}
+   }catch(err){apiRetryGate.failed(p.id,err);notifyQuota({type:'stale',id:p.id,reason:'官方 API 暂时无法同步'})}
   }
  })();
  try{return await apiPolling}
@@ -295,6 +298,7 @@ ipcMain.handle('quota:connect',async(_,kind,id,key,relay)=>{
  const safeRelay=kind==='relay'?relayConfig(relay):null;
  const value=await fetchLive(kind,key.trim(),safeRelay);
  const secrets=loadSecrets();secrets[id]={kind,cipher:await encrypt(key.trim()),...(safeRelay?{relay:safeRelay}:{})};saveSecrets(secrets);
+ apiRetryGate.succeeded(id);
  // An API key is not proof that it belongs to the signed-in Google account.
  return value;
 });
@@ -302,11 +306,14 @@ ipcMain.handle('quota:refresh',async(_,kind,id)=>{
  verify(kind,id);
  const entry=loadSecrets()[id];
  if (!entry || entry.kind!==kind || typeof entry.cipher!=='string') throw new Error('该账号尚未绑定，请先连接');
- return fetchLive(kind,await decrypt(entry.cipher),entry.relay);
+ const result=await fetchLive(kind,await decrypt(entry.cipher),entry.relay);
+ apiRetryGate.succeeded(id);
+ return result;
 });
 ipcMain.handle('quota:disconnect',(_,kind,id)=>{
  verify(kind,id);const secrets=loadSecrets();
  if (secrets[id]?.kind===kind) {delete secrets[id];saveSecrets(secrets)}
+ apiRetryGate.forget(id);
  return true;
 });
 ipcMain.handle('quota:openExternal',async(_,raw)=>{

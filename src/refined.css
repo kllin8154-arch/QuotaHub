@@ -192,3 +192,11 @@
 
 /* Safe, concise quota sampling diagnostics. */
 .sync-diagnostic { margin: 0 0 10px; padding: 8px 10px; border: 1px solid rgba(120,130,145,.18); border-radius: 9px; font-size: 12px; line-height: 1.55; color: var(--text-secondary, #667085); overflow-wrap: anywhere; }
+
+/* Per-account quota alerts stay compact and scoped to the provider card. */
+.quota-alert-hint{margin:0 0 10px;padding:7px 10px;border:1px solid rgba(180,115,75,.3);border-radius:9px;color:var(--text-secondary,#6e5648);font-size:12px;line-height:1.5}
+.quota-alert-settings{display:grid;gap:8px;margin:12px 0;padding:12px;border:1px solid rgba(120,130,145,.18);border-radius:11px}
+.quota-alert-settings small{line-height:1.5;color:var(--text-secondary,#77808c)}
+.quota-alert-toggle{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
+.quota-alert-toggle input{width:16px;height:16px;accent-color:#155d4d;flex:none}
+.quota-alert-settings .field{max-width:240px}

@@ -76,9 +76,10 @@ async function main(){
   await gate
   return originalRead(...args)
  }
+ // Backoff skips background retries after failure; explicit user refresh bypasses it.
  const pending=[
-  monitor.pollAll(),monitor.pollAll(),
-  handlers.get('quota:webSample')(null,'chatgpt',id)
+  handlers.get('quota:webSample')(null,'chatgpt',id),
+  monitor.pollAll(),monitor.pollAll()
  ]
  await new Promise(r=>setTimeout(r,30))
  assert.equal(actualReads,1,'concurrent manual/automatic refresh must share one official website read')

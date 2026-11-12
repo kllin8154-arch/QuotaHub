@@ -1,0 +1,36 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const ts=require('typescript');
+const path=require('node:path');
+function compile(filename, dependencies={}){
+ const code=ts.transpileModule(fs.readFileSync(path.join(__dirname,'..','src',filename),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+ const exports={};
+ vm.runInNewContext(code,{exports,require:(name)=>{if(name==='./syncHealth')return dependencies;throw Error('Unknown dependency '+name)},Date,Number,Math});
+ return exports;
+}
+const health=compile('syncHealth.ts');
+const {quotaAlert}=compile('quotaAlert.ts',health);
+const now=Date.parse('2026-11-12T02:00:00Z');
+const fresh=new Date(now-30_000).toISOString();
+const balance={id:'account-a',kind:'deepseek',name:'A',category:'API',mode:'live',metric:'balance',value:19,limit:100,unit:'USD',connected:true,webMonitored:false,updatedAt:fresh,alertEnabled:true,alertPercent:20};
+assert.equal(quotaAlert(balance,now),true);
+assert.equal(quotaAlert({...balance,value:20},now),true);
+assert.equal(quotaAlert({...balance,value:21},now),false);
+assert.equal(quotaAlert({...balance,alertEnabled:false},now),false);
+assert.equal(quotaAlert({...balance,limit:null},now),false);
+assert.equal(quotaAlert({...balance,updatedAt:new Date(now-6*60_000).toISOString()},now),false);
+assert.equal(quotaAlert({...balance,error:'HTTP 401'},now),false);
+assert.equal(quotaAlert({...balance,connected:false},now),false);
+assert.equal(quotaAlert({...balance,value:null},now),false);
+assert.equal(quotaAlert({...balance,alertPercent:150},now),false);
+const accountB={...balance,id:'account-b',value:60,alertPercent:70};
+assert.equal(quotaAlert(accountB,now),true);
+assert.equal(quotaAlert(balance,now),true);
+assert.equal(quotaAlert({...accountB,alertPercent:20},now),false,'second account independent threshold');
+const spend={...balance,metric:'spend',value:80,alertPercent:80};
+assert.equal(quotaAlert(spend,now),true);
+assert.equal(quotaAlert({...spend,value:79.9},now),false);
+assert.equal(quotaAlert({...spend,metric:'usage',value:90},now),true);
+console.log('QUOTA_ALERT_PER_ACCOUNT_FRESHNESS_AND_BOUNDARY_PASS');

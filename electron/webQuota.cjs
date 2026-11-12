@@ -2,6 +2,7 @@
 const { BrowserWindow, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const { createRetryGate } = require('./retryGate.cjs');
 
 const SITES = Object.freeze({
   chatgpt:{url:'https://chatgpt.com/settings/usage',hosts:['chatgpt.com'],auth:['auth.openai.com','openai.com','login.openai.com','accounts.google.com','login.microsoftonline.com','appleid.apple.com']},
@@ -18,6 +19,7 @@ const SITES = Object.freeze({
 });
 
 const windows=new Map();
+const recovery=createRetryGate();
 let shuttingDown=false;
 let dataPath;
 let bindingsPath;
@@ -286,6 +288,7 @@ async function sample(kind,id,manual=false) {
    at:new Date().toISOString(),source:'web',readAt:web.readAt,
    ...(found.breakdown?{breakdown:found.breakdown}:{})};
  record(point);
+ recovery.succeeded(id);
  notify({type:'snapshot',point,manual});
  return point;
 }
@@ -305,6 +308,7 @@ async function unbind(id) {
  const bindings=readFile(bindingsPath,{});
  const kind=bindings[id]?.kind;
  delete bindings[id];
+ recovery.forget(id);
  writeFile(bindingsPath,bindings);
  if(kind){
   const key=sessionKey(kind,id);
@@ -323,8 +327,13 @@ async function pollAll() {
  pollInFlight=(async()=>{
  const bindings=readFile(bindingsPath,{});
  for(const [id,binding] of Object.entries(bindings)){
-  const win=windows.get(sessionKey(binding.kind,id));
-  if(!win||win.isDestroyed()||win.webContents.isLoadingMainFrame())continue;
+  if(!recovery.allowed(id))continue;
+  let win=windows.get(sessionKey(binding.kind,id));
+  if(!win||win.isDestroyed()){
+   try{open(binding.kind,id,false)}catch(err){recovery.failed(id,err)}
+   continue;
+  }
+  if(win.webContents.isLoadingMainFrame())continue;
   try{
    await withAccountRefresh(binding.kind,id,async()=>{
    // Refresh live usage dashboards while the website window is hidden.
@@ -350,12 +359,15 @@ async function pollAll() {
    for(let attempt=0;attempt<3&&!completed;attempt++){
     try{await sample(binding.kind,id);completed=true}
     catch(err){
-     if(attempt===2)throw err;
+     if(attempt===2 || /401|403|429|login|sign.in|session|认证|登录|授权|限流|频率/i.test(String(err?.message||err)))throw err;
      await new Promise(r=>setTimeout(r,1800));
     }
    }
    });
-  }catch(err){notify({type:'stale',id,reason:String(err.message||'网页数据暂不可用').slice(0,160)})}
+  }catch(err){
+   recovery.failed(id,err);
+   notify({type:'stale',id,reason:String(err.message||'网页数据暂不可用').slice(0,160)});
+  }
  }
  })();
  try{return await pollInFlight}
