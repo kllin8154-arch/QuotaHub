@@ -11,12 +11,13 @@ import { quotaResetLabel } from './resetDisplay'
 import { activeWindows,windowRemaining,windowPercent,windowShortName,visiblePlan } from './usageWindowsDisplay'
 import IdentityPanel from './IdentityPanel'
 import PlatformLibrary from './PlatformLibrary'
+import { defaultServiceType, isServiceType, serviceTypeLabel, serviceTypeOptions, type ServiceType } from './serviceTypes'
 import type { WebQuotaCandidate, GoogleIdentityState } from './types'
 import type { RelayConfig } from './types'
 
 type Section = 'overview' | 'providers' | 'insights' | 'settings'
 type Editor = { type: 'edit' | 'new'; id?: string }
-type Draft = { kind: ProviderKind; name: string; account: string; category: 'API' | '订阅'; metric: Metric; value: string; limit: string; unit: string; note: string; relayUrl: string; relayMode:'newapi-account'|'newapi-key'|'custom'; relayUserId:string; relayPath:string; relayField:string; relayUnit:string; relayDivisor:string; alertEnabled:boolean; alertPercent:string }
+type Draft = { kind: ProviderKind; name: string; account: string; category: 'API' | '订阅'; serviceType: ServiceType; metric: Metric; value: string; limit: string; unit: string; note: string; relayUrl: string; relayMode:'newapi-account'|'newapi-key'|'custom'; relayUserId:string; relayPath:string; relayField:string; relayUnit:string; relayDivisor:string; alertEnabled:boolean; alertPercent:string }
 const KEY = 'aiquotahub.providers.v1'
 const isLiveKind = (kind:ProviderKind) => kind==='deepseek'||kind==='openai-api'||kind==='openrouter'||kind==='relay'
 const navItems: { id: Section; name: string; icon: typeof LayoutDashboard }[] = [
@@ -25,7 +26,7 @@ const navItems: { id: Section; name: string; icon: typeof LayoutDashboard }[] = 
  { id: 'insights', name: '额度趋势', icon: TrendingUp },
  { id: 'settings', name: '偏好设置', icon: Settings2 }
 ]
-const emptyDraft: Draft = { kind: 'custom', name: '', account: '', category: 'API', metric: 'balance', value: '', limit: '', unit: 'CNY', note: '', relayUrl:'',relayMode:'newapi-account',relayUserId:'',relayPath:'/api/user/self',relayField:'data.balance',relayUnit:'额度点',relayDivisor:'1',alertEnabled:false,alertPercent:'20' }
+const emptyDraft: Draft = { kind: 'custom', name: '', account: '', category: 'API', serviceType:'other', metric: 'balance', value: '', limit: '', unit: 'CNY', note: '', relayUrl:'',relayMode:'newapi-account',relayUserId:'',relayPath:'/api/user/self',relayField:'data.balance',relayUnit:'额度点',relayDivisor:'1',alertEnabled:false,alertPercent:'20' }
 function isFactoryPlaceholder(p: Provider): boolean {
  const template=definitions.find(d=>d.kind===p.kind)
  return !!template && p.id===p.kind && p.name===template.name &&
@@ -77,7 +78,7 @@ function ProviderCard({ data, isDemo, onEdit, onDetails, onRefresh, now }: { dat
    </div>
   </div>
   <div className="provider-intro">
-   <div className="eyebrow">{data.category === 'API' ? 'API 服务' : '订阅服务'}</div>
+   <div className="eyebrow">{serviceTypeLabel(isServiceType(data.serviceType)?data.serviceType:defaultServiceType(data.kind,data.category))}</div>
    <h3>{data.name}{data.kind==='chatgpt'&&data.planTier&&<span className="plan-pill">{visiblePlan(data)}</span>}</h3>
    <p>{data.account ? '账号 · ' + data.account : info?.tagline || data.note || '自定义平台用量追踪'}</p>
   </div>
@@ -250,7 +251,7 @@ function App() {
  },[])
  function edit(p: Provider) {
   setShowOptionalApiKey(false)
-  setDraft({...emptyDraft,kind:p.kind,name:p.name,account:p.account || '',category:p.category,metric:p.metric,value:p.value == null ? '' : String(p.value),limit:p.limit == null ? '' : String(p.limit),unit:p.unit,note:p.note || '',relayUrl:p.relay?.baseUrl||'',relayMode:p.relay?.mode||'newapi-account',relayUserId:p.relay?.userId||'',relayPath:p.relay?.path||'/api/user/self',relayField:p.relay?.field||'data.balance',relayUnit:p.relay?.unit||'额度点',relayDivisor:String(p.relay?.divisor||1),alertEnabled:!!p.alertEnabled,alertPercent:String(p.alertPercent??(p.metric==='balance'?20:80))})
+  setDraft({...emptyDraft,kind:p.kind,name:p.name,account:p.account || '',category:p.category,serviceType:isServiceType(p.serviceType)?p.serviceType:defaultServiceType(p.kind,p.category),metric:p.metric,value:p.value == null ? '' : String(p.value),limit:p.limit == null ? '' : String(p.limit),unit:p.unit,note:p.note || '',relayUrl:p.relay?.baseUrl||'',relayMode:p.relay?.mode||'newapi-account',relayUserId:p.relay?.userId||'',relayPath:p.relay?.path||'/api/user/self',relayField:p.relay?.field||'data.balance',relayUnit:p.relay?.unit||'额度点',relayDivisor:String(p.relay?.divisor||1),alertEnabled:!!p.alertEnabled,alertPercent:String(p.alertPercent??(p.metric==='balance'?20:80))})
   setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
   setEditor({type:'edit',id:p.id});setSidebar(false)
   if(desktop && ['chatgpt','deepseek'].includes(p.kind) && !p.webMonitored && !p.connected){
@@ -265,7 +266,7 @@ function App() {
   const info=definitions.find(x=>x.kind===kind)
   if(!info)return
   const id='qh-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)
-  setDraft({...emptyDraft,kind,name:info.name,category:info.category,metric:info.metric,unit:info.unit})
+  setDraft({...emptyDraft,kind,name:info.name,category:info.category,serviceType:defaultServiceType(info.kind,info.category),metric:info.metric,unit:info.unit})
   setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
   setShowOptionalApiKey(false)
   setAddDifferentAccount(false);setLibraryOpen(false)
@@ -281,7 +282,7 @@ function App() {
   setAddDifferentAccount(false)
   const info = definitions.find(x=>x.kind===kind)
   setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false)
-  setDraft(p=>({...p,kind,name:info?.name || '',category:info?.category || 'API',metric:info?.metric || 'balance',unit:info?.unit || 'CNY'}))
+  setDraft(p=>({...p,kind,name:info?.name || '',category:info?.category || 'API',serviceType:defaultServiceType(kind,info?.category||'API'),metric:info?.metric || 'balance',unit:info?.unit || 'CNY'}))
   const existing=items.find(p=>p.kind===kind&&(p.webMonitored||p.connected))
   if(desktop && editor?.id && ['chatgpt','deepseek'].includes(kind)&&!(editor.type==='new'&&existing)){
    setWebStatus('官方额度页正在打开。登录完成后自动绑定并持续同步，不需要手动操作。')
@@ -387,7 +388,7 @@ function App() {
     webResult=await window.quotaBridge.webBind(draft.kind,id,candidate)
    }
    const record: Provider = {
-    id,kind:draft.kind,name:draft.name.trim(),account:draft.account.trim(),category:draft.category,
+    id,kind:draft.kind,name:draft.name.trim(),account:draft.account.trim(),category:draft.category,serviceType:draft.serviceType,
     mode: (liveCapable && desktop || !!webResult || !!old?.webMonitored) ? 'live' : 'manual',
     metric:webResult?.metric || live?.metric || (observed?old?.metric:draft.metric),
     unit:webResult?.unit || live?.unit || (observed?old?.unit:draft.unit),
@@ -529,7 +530,7 @@ function App() {
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.8</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.9</span><span>本地优先 · 安全管理</span></footer>
   </div>
   {libraryOpen && <PlatformLibrary onClose={()=>setLibraryOpen(false)} onProvider={chooseProvider} onOfficial={goTo}/>}
   <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}
@@ -587,20 +588,23 @@ function App() {
      <p>正在单独绑定另一个账号。它会使用独立会话，不覆盖现有平台登录与历史数据。</p>
      <button type="button" onClick={()=>setAddDifferentAccount(false)}>改为使用已有账号</button>
     </div>}
-    <div className="modal-two"><label className="field"><span>平台名称</span><input value={draft.name} maxLength={60} onChange={e=>setDraft(p=>({...p,name:e.target.value}))} placeholder="例如 DeepSeek"/></label><label className="field"><span>服务类型</span><ReadableSelect ariaLabel="服务类型" value={draft.category}
- options={[{value:'API',label:'API 服务'},{value:'订阅',label:'订阅服务'}]}
- onChange={value=>setDraft(p=>({...p,category:value as 'API'|'订阅'}))} /></label></div>
+    <div className="modal-two"><label className="field"><span>平台名称</span><input value={draft.name} maxLength={60} onChange={e=>setDraft(p=>({...p,name:e.target.value}))} placeholder="例如 DeepSeek"/></label><label className="field"><span>服务类型</span><ReadableSelect ariaLabel="服务类型" value={draft.serviceType}
+ options={serviceTypeOptions.map(x=>({value:x.value,label:x.label}))}
+ onChange={value=>setDraft(p=>({...p,serviceType:value as ServiceType,
+   category:value==='api'?'API':value==='subscription'?'订阅':p.category}))} /></label></div>
     <label className="field"><span>账号名称 / 别名</span><input value={draft.account} maxLength={80} onChange={e=>setDraft(p=>({...p,account:e.target.value}))} placeholder="例如 工作账号、个人账号（非密码）"/></label><div className="modal-two"><label className="field"><span>追踪指标</span><ReadableSelect ariaLabel="追踪指标" value={draft.metric}
  options={[{value:'balance',label:'剩余余额'},{value:'usage',label:'已使用额度'},{value:'spend',label:'本月消费'}]}
  onChange={value=>setDraft(p=>({...p,metric:value as Metric,alertPercent:value==='balance'?'20':'80'}))} /></label><label className="field"><span>单位</span><ReadableSelect ariaLabel="单位" value={draft.unit}
  options={[{value:'CNY',label:'人民币 CNY'},{value:'USD',label:'美元 USD'},{value:'次',label:'请求 / 次'},{value:'tokens',label:'Tokens'},{value:'积分',label:'积分'},{value:'%',label:'百分比 %'}]}
  onChange={value=>setDraft(p=>({...p,unit:value}))} /></label></div>
     <div className="modal-two"><label className="field"><span>{draft.metric==='balance'?'当前剩余余额':draft.metric==='spend'?'本月消费金额':'本周期已用额度'}</span><input type="number" min="0" step="any" placeholder="留空表示未知" value={draft.value} onChange={e=>setDraft(p=>({...p,value:e.target.value}))}/></label><label className="field"><span>参考上限 / 预算</span><input type="number" min="0" step="any" placeholder="可选" value={draft.limit} onChange={e=>setDraft(p=>({...p,limit:e.target.value}))}/></label></div>
-    <div className="quota-alert-settings"><label className="quota-alert-toggle"><input type="checkbox" checked={draft.alertEnabled} onChange={e=>setDraft(p=>({...p,alertEnabled:e.target.checked}))}/><span>启用此账号的额度预警</span></label>
-      {draft.alertEnabled && <label className="field"><span>{draft.metric==='balance'?'剩余比例不高于 (%)':'已用比例达到 (%)'}</span><input type="number" min="1" max="99" step="1" value={draft.alertPercent} onChange={e=>setDraft(p=>({...p,alertPercent:e.target.value}))}/></label>}
-      <small>每个账号独立判断；仅在最近五分钟内成功同步、且设置参考上限时提示，不会基于过期或手动数据报警。</small>
-      {draft.alertEnabled && !(Number(draft.limit)>0) && <small>尚未设置参考上限，额度预警暂不会触发。</small>}
-     </div>
+    <section className={'quota-alert-settings'+(draft.alertEnabled?' is-enabled':'')}>
+      <div className="quota-alert-row">
+       <label className="quota-alert-toggle"><input type="checkbox" checked={draft.alertEnabled} onChange={e=>setDraft(p=>({...p,alertEnabled:e.target.checked}))}/><span>额度预警</span></label>
+       {draft.alertEnabled && <label className="quota-alert-threshold"><span>{draft.metric==='balance'?'剩余低于':'已用达到'}</span><input aria-label="额度预警百分比" type="number" min="1" max="99" step="1" value={draft.alertPercent} onChange={e=>setDraft(p=>({...p,alertPercent:e.target.value}))}/><span>%</span></label>}
+      </div>
+      <p>{draft.alertEnabled && !(Number(draft.limit)>0)?'尚未设置参考上限，预警将在有有效参考上限后生效。':'仅依据当前账号五分钟内的有效采样及参考上限判断，不根据过期数据报警。'}</p>
+     </section>
     <label className="field"><span>备注（可选）</span><input value={draft.note} maxLength={180} onChange={e=>setDraft(p=>({...p,note:e.target.value}))} placeholder="例如 工作账号"/></label>
     {webOnlyDeepSeek && <div className="web-connected-note"><ShieldCheck size={17}/><div><strong>已通过官方网页自动监测</strong><p>无需输入 API Key。刷新会读取你已登录的官网余额，不改变现有会话与历史记录。</p>
       <button type="button" onClick={()=>setShowOptionalApiKey(v=>!v)}>{showOptionalApiKey?'收起 API Key 高级选项':'高级选项：另用 API Key 直连'}</button></div></div>}
@@ -647,7 +651,7 @@ function App() {
     {editor.type==='edit' && items.find(x=>x.id===editor.id)?.error && <div className="error-hint">最近连接问题：{safeErrorText(items.find(x=>x.id===editor.id)?.error)}</div>}
     <div className="modal-links">{definitions.find(x=>x.kind===draft.kind) && <button onClick={()=>goTo(definitions.find(x=>x.kind===draft.kind)!.url)}><ExternalLink size={15}/> 打开官方平台</button>}{editor.type==='edit' && items.find(x=>x.id===editor.id)?.connected && <button onClick={()=>void disconnect()}><Wifi size={15}/> 断开密钥连接</button>}{editor.type==='edit' && <button className="remove-link" onClick={remove}>移除平台</button>}</div>
    </div>
-   <div className="modal-footer"><span><ShieldCheck size={16}/> 数据保存在本地</span><div><button className="modal-cancel" disabled={busy} onClick={()=>setEditor(null)}>取消</button><button className="primary-button smaller" disabled={busy} onClick={()=>void save()}>{busy?'正在验证...':reusablePlatform&&editor.type==='new'&&!addDifferentAccount?'复用已有账号':secret?'验证并保存':'保存配置'} <Check size={17}/></button></div></div>
+   <div className="modal-footer"><span><ShieldCheck size={16}/> 数据保存在本地</span><div><button className="modal-cancel" disabled={busy} onClick={()=>setEditor(null)}>取消</button><button className="primary-button modal-save" disabled={busy} onClick={()=>void save()}>{busy?'正在验证...':reusablePlatform&&editor.type==='new'&&!addDifferentAccount?'复用已有账号':secret?'验证并保存':'保存配置'} <Check size={17}/></button></div></div>
   </div></div>}
   {toast && <div role="status" className="toast"><span className="toast-icon"><Activity size={17}/></span>{toast}<button onClick={()=>setToast('')} aria-label="关闭提示"><X size={16}/></button></div>}
  </div>

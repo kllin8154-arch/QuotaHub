@@ -1,6 +1,6 @@
 {
   "name": "agnovexa-one",
-  "version": "0.13.8",
+  "version": "0.13.9",
   "private": true,
   "description": "Agnovexa One - unified AI balances and subscription monitoring",
   "type": "module",
@@ -30,7 +30,8 @@
     "test:readscript": "node tests/test-readscript-windows.cjs",
     "test:deepseek-excerpt": "node tests/test-readscript-deepseek.cjs",
     "test:deepseek-dom": "node tests/test-deepseek-dom-e2e.cjs",
-    "test:deepseek-editor": "node tests/test-deepseek-editor.cjs"
+    "test:deepseek-editor": "node tests/test-deepseek-editor.cjs",
+    "test:ui-polish": "node tests/test-ui-polish-v0139.cjs"
   },
   "dependencies": {
     "@capacitor/browser": "^7.0.3",

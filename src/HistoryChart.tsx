@@ -64,12 +64,12 @@ export default function HistoryChart({provider,revision}:{provider:Provider;revi
      {loaded && values.length>=(view==='line'?2:1) ?
        <svg viewBox={'0 0 '+W+' '+H} role="img" aria-label={provider.name+(view==='line'?'余额趋势':'每次采样间隔变化')+'，共'+values.length+'个数据点'}>
         {[0,1,2,3].map(i=><line key={i} x1={PAD} x2={W-PAD} y1={PAD+i*graphH/3} y2={PAD+i*graphH/3} stroke="currentColor" strokeOpacity=".12" strokeDasharray="3 5"/>)}
-        {view==='line'?<><path d={line} fill="none" stroke="#5da68e" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round"/>
+        {view==='line'?<><path d={line} fill="none" stroke="var(--ui-chart-line, #5da68e)" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round"/>
          {data.map(([x,y],i)=>i===0||i===data.length-1||i%Math.max(1,Math.ceil(data.length/14))===0
-          ?<circle key={i} cx={x} cy={y} r="3" fill="#d9f0e5" stroke="#337a65" strokeWidth="1.3">
+          ?<circle key={i} cx={x} cy={y} r="3" fill="var(--ui-chart-dot, #d9f0e5)" stroke="var(--ui-chart-dot-edge, #337a65)" strokeWidth="1.3">
             <title>{new Date(entries[i].at).toLocaleString('zh-CN')} · {fmt(entries[i].value)} {provider.unit}</title>
            </circle>:null)}</>:
-         data.map(([x,y],i)=><rect key={i} x={x-Math.max(2,graphW/(values.length+5)*.4)} y={y} width={Math.max(4,Math.min(20,graphW/(values.length+5)*.8))} height={H-PAD-y} rx="2" fill="#5da68e" fillOpacity=".83">
+         data.map(([x,y],i)=><rect key={i} x={x-Math.max(2,graphW/(values.length+5)*.4)} y={y} width={Math.max(4,Math.min(20,graphW/(values.length+5)*.8))} height={H-PAD-y} rx="2" fill="var(--ui-chart-line, #5da68e)" fillOpacity=".83">
           <title>{new Date(entries[i+1].at).toLocaleString('zh-CN')} · 区间变化 {fmt(values[i])} {provider.unit}</title>
          </rect>)}
         <text x={PAD} y={H-5} fontSize="10" fill="currentColor" opacity=".68">{entries[0] && new Date(entries[0].at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</text>

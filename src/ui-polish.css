@@ -1,0 +1,213 @@
+/* v0.13.9 — one visual language across platform library, settings, forms and trends.
+   Reuse existing theme variables; no new component framework. */
+.quota-refined{
+ --ui-card:#263545;--ui-card-hover:#304255;--ui-card-border:#425468;
+ --ui-control:#243344;--ui-control-selected:#435c74;--ui-muted:#a4b6c9;
+ --ui-chart:#253445;--ui-chart-head:#a8c0d5;--ui-chart-line:#5fae91;
+ --ui-chart-dot:#e4f5ec;--ui-chart-dot-edge:#337966;
+ --ui-note:#2c3c4c;--ui-note-line:#4a5d70;
+}
+.quota-refined.tone-warm{
+ --ui-card:#3d363d;--ui-card-hover:#4c4147;--ui-card-border:#665860;
+ --ui-control:#383139;--ui-control-selected:#68545c;--ui-muted:#d4c3c8;
+ --ui-chart:#403842;--ui-chart-head:#d9c7cf;--ui-chart-line:#a5c6ad;
+ --ui-chart-dot:#eff4e9;--ui-chart-dot-edge:#59785d;
+ --ui-note:#463d43;--ui-note-line:#6b5964;
+}
+.quota-refined.tone-clear{
+ --ui-card:#ffffff;--ui-card-hover:#eff5fa;--ui-card-border:#c8d4e0;
+ --ui-control:#f0f4f9;--ui-control-selected:#dfebf5;--ui-muted:#536982;
+ --ui-chart:#fafcff;--ui-chart-head:#597088;--ui-chart-line:#37886f;
+ --ui-chart-dot:#f7fffc;--ui-chart-dot-edge:#2a7561;
+ --ui-note:#f3f8fc;--ui-note-line:#c5d4e3;
+}
+/* Platform catalog: override browser-native gray button surfaces explicitly. */
+.quota-refined .platform-library{
+ background:linear-gradient(153deg,var(--qh-bg1),var(--qh-bg2));
+ color:var(--qh-text);
+ border-color:var(--qh-panel-edge);
+}
+.quota-refined .library-tabs{background:var(--ui-control);border-color:var(--ui-card-border);gap:4px;padding:4px}
+.quota-refined .library-tabs button,
+.quota-refined .library-groups button{
+ background:transparent;border:1px solid transparent;color:var(--qh-muted);
+ min-height:36px;padding:8px 13px;border-radius:9px;font-size:12px;
+ transition:background .17s,border-color .17s,color .17s;
+}
+.quota-refined .library-tabs button:hover,.quota-refined .library-groups button:hover{
+ background:var(--ui-card-hover);color:var(--qh-text);
+}
+.quota-refined .library-tabs button.selected,
+.quota-refined .library-groups button.selected{
+ color:var(--qh-text);border-color:var(--ui-card-border);
+ background:var(--ui-control-selected);box-shadow:none;
+}
+.quota-refined .library-groups{gap:7px}
+.quota-refined .library-groups button{min-height:31px;font-size:11px}
+.quota-refined .library-search{
+ background:var(--ui-card);border-color:var(--ui-card-border);
+ color:var(--ui-muted);min-height:42px;
+}
+.quota-refined .library-search input{
+ background:transparent;border:0;color:var(--qh-text);font-size:12px;
+}
+.quota-refined .library-search input::placeholder{color:var(--ui-muted);opacity:1}
+.quota-refined .library-entry{
+ background:var(--ui-card);border:1px solid var(--ui-card-border);
+ color:var(--qh-text);box-shadow:none;
+}
+.quota-refined .library-entry:hover,.quota-refined .library-entry.expanded{
+ background:var(--ui-card-hover);border-color:var(--qh-accent);
+ box-shadow:0 6px 20px #0a172123;
+}
+.quota-refined .library-agent-main{
+ background:transparent;border:0;box-shadow:none;color:inherit;
+ border-radius:12px;cursor:pointer;font:inherit;
+}
+.quota-refined .library-agent-main:hover,.quota-refined .library-agent-main:active{
+ background:transparent;border-color:transparent;
+}
+.quota-refined .quota-entry{background:var(--ui-card);border:1px solid var(--ui-card-border)}
+.quota-refined .quota-entry:hover{background:var(--ui-card-hover)}
+.quota-refined .library-symbol{
+ background:var(--ui-control);border-color:var(--ui-card-border);
+ color:var(--qh-text);
+}
+.quota-refined .library-entry-copy strong{color:var(--qh-text);font-size:13px}
+.quota-refined .library-entry-copy small{color:var(--qh-muted);opacity:1}
+.quota-refined .library-entry-copy .library-micro,
+.quota-refined .library-agent-detail .library-caution{color:var(--ui-muted)}
+.quota-refined .library-agent-detail{border-color:var(--ui-card-border)}
+.quota-refined .library-agent-detail p{color:var(--qh-muted)}
+.quota-refined .library-agent-buttons button,
+.quota-refined .library-footer button{
+ background:var(--ui-control);color:var(--qh-text);
+ border:1px solid var(--ui-card-border);border-radius:9px;
+ transition:background .17s,border-color .17s;
+}
+.quota-refined .library-agent-buttons button:hover,
+.quota-refined .library-footer button:hover{background:var(--ui-card-hover);border-color:var(--qh-accent)}
+.quota-refined .library-agent-buttons .library-official{color:var(--qh-text)}
+.quota-refined .library-footer{border-color:var(--ui-card-border)}
+.quota-refined .library-footer span{color:var(--ui-muted);font-size:11px}
+.quota-refined .platform-library button:active{transform:translateY(1px)}
+/* Do not stretch content, but align the outer cards in the same settings row. */
+.quota-refined .settings-layout{align-items:stretch;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.quota-refined .settings-card{
+ min-width:0;height:100%;align-self:stretch;display:flex;flex-direction:column;
+ padding:25px 26px;
+}
+.quota-refined .settings-card .setting-line{min-width:0}
+.quota-refined .settings-card .setting-line>div{min-width:0}
+.quota-refined .settings-card .setting-line small{overflow-wrap:anywhere}
+.quota-refined .settings-card .setting-tag{flex:none}
+.quota-refined .settings-card h3:not(:first-child){margin-top:6px}
+/* Trends should never keep an unrelated dark panel inside a light workspace. */
+.quota-refined .insight-note{
+ background:var(--ui-note);border:1px solid var(--ui-note-line);
+ color:var(--qh-text);border-radius:13px;padding:15px 18px;
+}
+.quota-refined .insight-note svg{color:var(--qh-accent)}
+.quota-refined .history-card{
+ background:var(--ui-chart);border:1px solid var(--ui-card-border);
+ color:var(--qh-text);box-shadow:0 7px 23px #08152516;
+}
+.quota-refined .history-header small{color:var(--qh-muted);opacity:1}
+.quota-refined .history-switch{background:var(--ui-control);border:1px solid var(--ui-card-border)}
+.quota-refined .history-switch button{
+ background:transparent;color:var(--ui-muted);
+ transition:background .15s,color .15s;
+}
+.quota-refined .history-switch button:hover{background:var(--ui-card-hover);color:var(--qh-text)}
+.quota-refined .history-switch button.selected{
+ background:var(--ui-control-selected);color:var(--qh-text);
+}
+.quota-refined .history-topline strong small,.quota-refined .history-topline>small,
+.quota-refined .history-footer>span{color:var(--qh-muted)}
+.quota-refined .history-chart svg{color:var(--ui-chart-head)}
+.quota-refined .history-periods button{
+ background:transparent;color:var(--qh-muted);
+ border:1px solid transparent;border-radius:8px;
+}
+.quota-refined .history-periods button:hover{background:var(--ui-card-hover);color:var(--qh-text)}
+.quota-refined .history-periods button.selected{
+ background:var(--ui-control-selected);color:var(--qh-text);border-color:var(--ui-card-border);
+}
+.quota-refined .history-unavailable{border-color:var(--ui-card-border);color:var(--qh-muted)}
+.quota-refined .history-unavailable strong{color:var(--qh-text)}
+.quota-refined .history-card button:focus-visible,
+.quota-refined .library-tabs button:focus-visible,
+.quota-refined .library-search input:focus-visible{
+ outline:2px solid var(--qh-accent);outline-offset:2px;
+}
+/* Editor: concise warning, consistent 44px actions, no phantom tall blank area. */
+.quota-refined .modal-backdrop .quota-alert-settings{
+ display:flex;flex-direction:column;gap:8px;
+ margin:5px 0 19px;padding:13px 15px;border-radius:12px;
+ background:#252f3c;border:1px solid #49596b;
+}
+.quota-refined .modal-backdrop .quota-alert-row{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;min-height:30px;
+}
+.quota-refined .modal-backdrop .quota-alert-toggle{
+ display:inline-flex;align-items:center;gap:10px;cursor:pointer;
+ font-size:13px;font-weight:670;color:#edf3f8;
+}
+.quota-refined .modal-backdrop .quota-alert-toggle input{width:17px;height:17px;accent-color:#85bfa8;cursor:pointer}
+.quota-refined .modal-backdrop .quota-alert-threshold{
+ display:inline-flex;align-items:center;gap:8px;color:#dce6ef;
+ font-size:12px;font-weight:590;
+}
+.quota-refined .modal-backdrop .quota-alert-threshold input{
+ width:72px;min-width:0;height:34px;padding:0 10px;
+ background:#344256;border:1px solid #607389;
+ color:#f3f6fb;font-size:13px;border-radius:8px;
+}
+.quota-refined .modal-backdrop .quota-alert-settings p{
+ margin:0;color:#aabccc;font-size:11px;line-height:1.55;
+}
+.quota-refined .modal-backdrop .modal-footer{
+ gap:16px;min-height:75px;background:#1b2532;
+}
+.quota-refined .modal-backdrop .modal-footer>div{display:flex;gap:10px;justify-content:flex-end;align-items:center}
+.quota-refined .modal-backdrop .modal-footer .modal-cancel,
+.quota-refined .modal-backdrop .modal-footer .modal-save{
+ display:inline-flex;align-items:center;justify-content:center;gap:8px;
+ height:44px;min-height:44px;padding:0 18px;margin:0;
+ border-radius:10px;font-size:13px;font-weight:700;white-space:nowrap;
+ transition:background .16s,border-color .16s,transform .16s,box-shadow .16s;
+}
+.quota-refined .modal-backdrop .modal-footer .modal-cancel{
+ background:#303d4e;color:#eef3f7;border:1px solid #58697c;box-shadow:none;
+}
+.quota-refined .modal-backdrop .modal-footer .modal-save{
+ background:linear-gradient(135deg,#e9969a,#cb7881);color:#fff;
+ border:1px solid #efb0b3;box-shadow:none;
+}
+.quota-refined .modal-backdrop .modal-footer .modal-cancel:hover{
+ background:#3b4b5f;border-color:#94a6b9;
+}
+.quota-refined .modal-backdrop .modal-footer .modal-save:hover{
+ background:linear-gradient(135deg,#f2a5a8,#d98990);box-shadow:0 4px 14px #e98b9040;
+}
+.quota-refined .modal-backdrop .modal-footer button:active{transform:translateY(1px);box-shadow:none}
+.quota-refined .modal-backdrop .modal-footer button:disabled{opacity:.48;cursor:wait;transform:none}
+.quota-refined .modal-backdrop .modal-footer button:focus-visible{outline:2px solid #f4b4ba;outline-offset:3px}
+@media(max-width:900px){
+ .quota-refined .settings-layout{grid-template-columns:1fr}
+ .quota-refined .settings-card{height:auto;padding:22px}
+}
+@media(max-width:700px){
+ .quota-refined .library-grid{grid-template-columns:1fr}
+ .quota-refined .library-toolbar{gap:10px}
+ .quota-refined .library-search{max-width:none;flex-basis:100%}
+}
+@media(max-width:480px){
+ .quota-refined .settings-card{padding:19px}
+ .quota-refined .modal-backdrop .modal-footer>span{display:none}
+ .quota-refined .modal-backdrop .modal-footer>div{width:100%}
+ .quota-refined .modal-backdrop .modal-footer button{flex:1;min-width:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .quota-refined .platform-library button,.quota-refined .modal-footer button{transition:none}
+}
