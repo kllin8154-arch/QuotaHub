@@ -200,3 +200,143 @@
 .quota-alert-toggle{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
 .quota-alert-toggle input{width:16px;height:16px;accent-color:#155d4d;flex:none}
 .quota-alert-settings .field{max-width:240px}
+
+/* v0.13.4: quiet navigation, consistent controls and aligned account metadata. */
+.quota-refined .sidebar-bottom{display:none}
+.quota-refined .refined-actions .outline-button,
+.quota-refined .section-tools .text-button{
+  margin:0;min-height:40px;padding:0 14px;display:inline-flex;align-items:center;
+  justify-content:center;gap:8px;border:1px solid var(--qh-panel-edge);
+  border-radius:10px;background:var(--qh-surface);color:var(--qh-text);
+  font-size:12px;font-weight:690;line-height:1.25;
+}
+.quota-refined .refined-actions .primary-button{min-height:40px;padding:0 16px;border-radius:10px;font-size:12px}
+.quota-refined .refined-actions .outline-button,
+.quota-refined .refined-actions .primary-button,
+.quota-refined .section-tools .text-button{
+  box-shadow:0 2px 8px #07131e10;
+  transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease,color .18s ease;
+}
+.quota-refined .refined-actions .outline-button:hover,
+.quota-refined .section-tools .text-button:hover{
+  background:var(--qh-over);border-color:var(--qh-accent);
+  box-shadow:0 6px 16px #07131e20;transform:translateY(-1px);
+}
+.quota-refined .refined-actions .primary-button:hover{transform:translateY(-1px)}
+.quota-refined .refined-actions button:active,
+.quota-refined .section-tools button:active{
+  transform:translateY(0);box-shadow:inset 0 1px 4px #07131e28;
+}
+.quota-refined .refined-actions button:disabled,
+.quota-refined .section-tools button:disabled{
+  opacity:.48;cursor:not-allowed;transform:none;box-shadow:none;
+}
+.quota-refined .refined-actions button:focus-visible,
+.quota-refined .section-tools button:focus-visible,
+.quota-refined .status-trigger:focus-visible,
+.quota-refined .detail-panel button:focus-visible{
+  outline:2px solid var(--qh-accent);outline-offset:3px;
+}
+.quota-refined .section-tools{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.quota-refined .provider-card{
+  min-height:310px;display:flex;flex-direction:column;
+}
+.quota-refined .provider-intro p{line-height:1.5;min-height:16px;overflow-wrap:anywhere}
+.quota-refined .provider-metric{margin-top:18px}
+.quota-refined .progress-hint,
+.quota-refined .progress-empty{
+  margin-top:8px;min-height:23px;line-height:1.45;align-items:flex-start;
+}
+.quota-refined .progress-hint>span:last-child{flex-shrink:0}
+.quota-refined .provider-meta-stack{
+  min-height:35px;display:flex;flex-direction:column;justify-content:flex-end;
+  gap:6px;margin-top:auto;padding-top:10px;
+}
+.quota-refined .provider-meta-stack .provider-source-tag{
+  margin:0;min-height:17px;line-height:1.6;
+}
+.quota-refined .provider-meta-stack .sync-diagnostic,
+.quota-refined .provider-meta-stack .quota-alert-hint{margin:0;line-height:1.5}
+.quota-refined .card-bottom{
+  margin-top:12px;padding-top:12px;min-height:35px;gap:10px;
+  border-top:1px solid var(--qh-line);
+}
+.quota-refined .card-link{white-space:nowrap;gap:5px}
+.quota-refined .card-link:focus-visible{outline:2px solid var(--qh-accent);outline-offset:3px;border-radius:5px}
+.quota-refined .status-anchor{position:relative;flex-shrink:0}
+.quota-refined .status-trigger{
+  display:inline-flex;align-items:center;gap:0;cursor:pointer;
+  transition:background .18s,border-color .18s,box-shadow .18s;
+}
+.quota-refined .status-trigger:hover,.quota-refined .status-trigger[aria-expanded="true"]{
+  background:var(--qh-over);border-color:var(--qh-accent);
+}
+.quota-refined .status-popover{
+  position:absolute;right:0;top:calc(100% + 12px);width:min(290px,calc(100vw - 34px));
+  z-index:85;padding:17px;border:1px solid var(--qh-panel-edge);border-radius:15px;
+  background:linear-gradient(145deg,var(--qh-bg1),var(--qh-bg2));
+  color:var(--qh-text);box-shadow:0 18px 44px #07131e55;
+}
+.quota-refined .status-popover>strong{display:block;font-size:14px;margin-bottom:13px}
+.quota-refined .status-popover>div{
+  display:flex;justify-content:space-between;gap:12px;padding:9px 0;
+  border-top:1px solid var(--qh-line);font-size:11px;
+}
+.quota-refined .status-popover>div span{color:var(--qh-muted)}
+.quota-refined .status-popover>div b{font-weight:640;text-align:right;min-width:0;overflow-wrap:anywhere}
+.quota-refined .status-popover>small{display:block;color:var(--qh-muted);line-height:1.7;margin-top:11px}
+.quota-refined .detail-shade{
+  position:fixed;inset:0;z-index:92;display:flex;justify-content:flex-end;
+  background:#08121e85;backdrop-filter:blur(4px);
+}
+.quota-refined .detail-panel{
+  display:flex;flex-direction:column;width:min(548px,100vw);height:100%;
+  border-left:1px solid var(--qh-panel-edge);background:linear-gradient(135deg,var(--qh-bg1),var(--qh-bg2));
+  color:var(--qh-text);box-shadow:-14px 0 45px #08121e45;
+}
+.quota-refined .detail-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:15px;
+  padding:27px 27px 20px;border-bottom:1px solid var(--qh-line);
+}
+.quota-refined .detail-head h2{font-size:23px;margin:7px 0;font-weight:750}
+.quota-refined .detail-head p{font-size:11px;line-height:1.6;color:var(--qh-muted)}
+.quota-refined .detail-scroll{overflow:auto;min-height:0;flex:1;padding:24px 27px}
+.quota-refined .detail-account-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:16px}
+.quota-refined .detail-account-tabs button{
+  flex-shrink:0;max-width:210px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;
+  border:1px solid var(--qh-panel-edge);background:var(--qh-surface);color:var(--qh-muted);
+  padding:9px 11px;border-radius:9px;font-size:11px;
+}
+.quota-refined .detail-account-tabs button:hover{color:var(--qh-text);border-color:var(--qh-accent)}
+.quota-refined .detail-account-tabs button.selected{color:var(--qh-text);border-color:var(--qh-accent);background:var(--qh-over)}
+.quota-refined .detail-summary{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:22px;
+  border:1px solid var(--qh-panel-edge);border-radius:15px;
+  background:var(--qh-surface);padding:22px;margin-bottom:14px;
+}
+.quota-refined .detail-overline,.quota-refined .detail-balance small{font-size:10px;color:var(--qh-muted)}
+.quota-refined .detail-summary h3{font-size:18px;margin:8px 0 5px}
+.quota-refined .detail-summary>div>small{color:var(--qh-muted)}
+.quota-refined .detail-balance{text-align:right;min-width:0}
+.quota-refined .detail-balance small{display:block}
+.quota-refined .detail-balance strong{display:block;font-size:27px;letter-spacing:-.6px;margin-top:7px;overflow-wrap:anywhere}
+.quota-refined .detail-facts{display:grid;gap:0;border:1px solid var(--qh-panel-edge);border-radius:14px;padding:4px 16px;background:var(--qh-surface);margin-bottom:15px}
+.quota-refined .detail-facts>div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 0}
+.quota-refined .detail-facts>div+div{border-top:1px solid var(--qh-line)}
+.quota-refined .detail-facts span{color:var(--qh-muted);font-size:11px}
+.quota-refined .detail-facts strong{font-size:11px;font-weight:630;text-align:right;overflow-wrap:anywhere}
+.quota-refined .detail-diagnostic,.quota-refined .detail-empty{font-size:12px;line-height:1.6;color:var(--qh-muted);margin:15px 0}
+.quota-refined .detail-panel .history-card{min-width:0;max-width:100%;margin-bottom:15px}
+.quota-refined .detail-actions{display:flex;justify-content:flex-end;gap:9px;padding:15px 26px;border-top:1px solid var(--qh-line)}
+.quota-refined .detail-actions .outline-button{margin:0;padding:10px 14px}
+.quota-refined .detail-actions .detail-secondary{background:var(--qh-over);border-color:var(--qh-panel-edge)}
+@media(max-width:740px){
+  .quota-refined .status-trigger{display:inline-flex;font-size:0;padding:0 12px;height:34px}
+  .quota-refined .status-trigger .pulse-dot{margin:0}
+  .quota-refined .detail-head{padding:20px}
+  .quota-refined .detail-scroll{padding:20px}
+  .quota-refined .provider-card{min-height:300px}
+}
+@media(prefers-reduced-motion:reduce){
+ .quota-refined .refined-actions button,.quota-refined .section-tools button{transition:none}
+}

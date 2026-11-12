@@ -29,6 +29,12 @@ contextBridge.exposeInMainWorld('quotaBridge', Object.freeze({
     ipcRenderer.on('identity:changed',listener);
     return ()=>ipcRenderer.removeListener('identity:changed',listener);
   },
+  onDetailRequested: callback => {
+    if(typeof callback!=='function')return ()=>{};
+    const listener=(_event,id)=>callback(id);
+    ipcRenderer.on('quota:showDetail',listener);
+    return ()=>ipcRenderer.removeListener('quota:showDetail',listener);
+  },
   onSnapshot: callback => {
     if(typeof callback!=='function')return ()=>{};
     const listener=(_event,payload)=>callback(payload);
@@ -59,5 +65,5 @@ contextBridge.exposeInMainWorld('quotaWidget', Object.freeze({
     ipcRenderer.on('widget:settings',listener);
     return () => ipcRenderer.removeListener('widget:settings',listener);
   },
-  openDashboard: () => ipcRenderer.invoke('widget:dashboard')
+  openDashboard: id => ipcRenderer.invoke('widget:dashboard',id)
 }));

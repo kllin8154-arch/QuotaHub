@@ -52,7 +52,7 @@ function goTo(url: string) {
  if (window.quotaBridge) void window.quotaBridge.openExternal(url)
  else window.open(url, '_blank', 'noopener,noreferrer')
 }
-function ProviderCard({ data, isDemo, onEdit, onRefresh, now }: { data: Provider; isDemo: boolean; onEdit: (p: Provider) => void; onRefresh: (p: Provider) => void; now: number }) {
+function ProviderCard({ data, isDemo, onEdit, onDetails, onRefresh, now }: { data: Provider; isDemo: boolean; onEdit: (p: Provider) => void; onDetails: (p: Provider) => void; onRefresh: (p: Provider) => void; now: number }) {
  const info = definitions.find(x => x.kind === data.kind)
  const risk = quotaAlert(data,now)
  const ratio = data.value != null && data.limit != null && data.limit > 0 ? Math.min(100, Math.max(0, data.value / data.limit * 100)) : null
@@ -82,15 +82,17 @@ function ProviderCard({ data, isDemo, onEdit, onRefresh, now }: { data: Provider
    <div className="metric-main"><strong>{valueText(data)}</strong>{hasData && <span className="metric-unit">{data.unit === 'CNY' ? 'CNY' : data.unit === 'USD' ? 'USD' : data.unit}</span>}</div>
    {ratio !== null ? <><div className="progress-track"><div style={{ width: ratio + '%' }}/></div><div className="progress-hint"><span>{data.metric === 'balance' ? '剩余占参考上限' : '已用占参考上限'} {Math.round(ratio)}%</span><span>参考 {formatNumber(data.limit!)}</span></div></> : <div className="progress-empty">{hasData ? '未设置参考上限' : '配置后即可开始追踪'}</div>}
   </div>
+  <div className="provider-meta-stack">
   {(data.updatedAt||health==='pending') && <div className={'provider-source-tag source-'+health}
    title={diagnostic||'最近成功数据：'+(data.updatedAt?new Date(data.updatedAt).toLocaleString('zh-CN'):'尚无')}>
    {sourceLabel}{health==='delayed'||health==='error'?' · 非实时':''}
   </div>}
   {diagnostic && !isDemo && <div className="sync-diagnostic" role="status">{diagnostic}</div>}
   {risk && <div className="quota-alert-hint" role="status">额度预警 · {data.account||data.name} · {data.metric==='balance'?'剩余额度低于':'用量达到'} {data.alertPercent??(data.metric==='balance'?20:80)}% 阈值</div>}
+  </div>
   <div className="card-bottom">
    <div className="status-with-dot" title={diagnostic||syncLabel}><span className={'dot ' + (isDemo?'dot-demo':health==='healthy'?'dot-online':health==='manual'&&hasData?'dot-manual':'dot-off')}></span>{syncLabel}</div>
-   <button onClick={() => onEdit(data)} className="card-link">{data.connected||data.webMonitored ? '已绑定' : '绑定 / 管理'} <ArrowUpRight size={15}/></button>
+   <button onClick={() => onDetails(data)} className="card-link">查看详情 <ArrowUpRight size={15}/></button>
   </div>
  </article>
 }
@@ -114,6 +116,8 @@ function App() {
  const [sidebar, setSidebar] = useState(false)
  const [historyRevision,setHistoryRevision] = useState(0)
  const [identityOpen,setIdentityOpen]=useState(false)
+ const [statusOpen,setStatusOpen]=useState(false)
+ const [detailTarget,setDetailTarget]=useState<string|null>(()=>new URLSearchParams(window.location.search).get('detail'))
  const [addDifferentAccount,setAddDifferentAccount]=useState(false)
  const [googleIdentity,setGoogleIdentity]=useState<GoogleIdentityState|null>(null)
  const [accountSyncReady,setAccountSyncReady] = useState(!window.quotaBridge)
@@ -134,6 +138,8 @@ function App() {
  const configured = viewing.filter(x => x.value != null)
  const nextReset = viewing.filter(x => x.reset && new Date(x.reset).getTime() >= Date.now()).sort((a,b) => (a.reset || '').localeCompare(b.reset || ''))[0]
  const platformChoices = definitions
+ const detailProvider = detailTarget ? (detailTarget==='first'?items[0]:items.find(p=>p.id===detailTarget)) : undefined
+ const lastSuccess = Math.max(0,...items.map(p=>Date.parse(p.updatedAt||'')).filter(Number.isFinite))
  useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(items)) } catch {} }, [items])
  useEffect(()=>{const id=window.setInterval(()=>setNow(Date.now()),30_000);return ()=>window.clearInterval(id)},[])
  useEffect(()=>{
@@ -182,8 +188,9 @@ function App() {
     .finally(()=>setAccountSyncReady(true))
  },[])
  useEffect(() => { localStorage.setItem('aiquotahub.ui.tone',glassTone) },[glassTone])
+ useEffect(()=>window.quotaBridge?.onDetailRequested?.(id=>{setDetailTarget(id||'first');setStatusOpen(false);setEditor(null)}),[])
  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 4200); return () => clearTimeout(t) }, [toast])
- useEffect(() => { const fn = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.qh-readable-options')) setEditor(null) }; window.addEventListener('keydown',fn); return () => window.removeEventListener('keydown',fn) }, [])
+ useEffect(() => { const fn = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.qh-readable-options')) {setEditor(null);setDetailTarget(null);setStatusOpen(false)} }; window.addEventListener('keydown',fn); return () => window.removeEventListener('keydown',fn) }, [])
  useEffect(()=>{
   if(!window.quotaBridge?.onSnapshot)return
   return window.quotaBridge.onSnapshot(message=>{
@@ -390,6 +397,7 @@ function App() {
  const reusablePlatform=editor?.type==='new'&&draft.kind!=='relay'&&draft.kind!=='custom'
    ?items.find(p=>p.kind===draft.kind&&(p.connected||p.webMonitored)):undefined
  const topCards = [...viewing].sort((a,b)=>Number(b.value!=null)-Number(a.value!=null)).slice(0,4)
+ const showDetails=(p:Provider)=>{setDetailTarget(p.id);setStatusOpen(false);setEditor(null)}
  return <div className={'shell quota-refined tone-'+glassTone}>
   <aside className={'sidebar '+(sidebar?'sidebar-open':'')}>
    <button className="brand" onClick={()=>switchSection('overview')}><span className="brand-mark"><img src="./icon.svg" alt="" aria-hidden="true"/></span><span>Agnovexa One<small>AI 额度与订阅监测</small></span></button>
@@ -400,10 +408,7 @@ function App() {
     <button className="side-filter" onClick={()=>{switchSection('providers');setCategory('API')}}><span className="filter-icon api"><Zap size={16}/></span><span>API 额度</span><span className="count">{items.filter(x=>x.category==='API').length}</span></button>
     <button className="side-filter" onClick={()=>{switchSection('providers');setCategory('订阅')}}><span className="filter-icon sub"><CreditCard size={16}/></span><span>订阅计划</span><span className="count">{items.filter(x=>x.category==='订阅').length}</span></button>
    </div>
-   <div className="sidebar-bottom">
-    <div className="privacy-tile"><ShieldCheck size={19}/><strong>本地优先</strong><p>配置保存在本机。密钥仅在桌面端加密保存。</p></div>
-    <div className="profile"><div className="profile-avatar"><Wallet size={19}/></div><div><strong>我的工作台</strong><small>{isAndroid?'Android 安全连接':'Windows 桌面端 / Web 模式'}</small></div><span className="profile-status"/></div>
-   </div>
+
   </aside>
   {sidebar && <button className="mobile-shade" onClick={()=>setSidebar(false)} aria-label="关闭菜单"/>}
   <div className="page">
@@ -413,7 +418,17 @@ function App() {
       <button title="烟灰" aria-label="烟灰玻璃" className={glassTone==='smoke'?'selected':''} onClick={()=>setGlassTone('smoke')}><i className="tone-dot smoke"/></button>
       <button title="冰白" aria-label="冰白玻璃" className={glassTone==='clear'?'selected':''} onClick={()=>setGlassTone('clear')}><i className="tone-dot clear"/></button>
       <button title="暖灰" aria-label="暖灰玻璃" className={glassTone==='warm'?'selected':''} onClick={()=>setGlassTone('warm')}><i className="tone-dot warm"/></button>
-    </div><span className="topbar-mode"><span className="pulse-dot"/>{isAndroid?'Android Connected':desktop?'Desktop Connected':'Web Preview'}</span><button className="icon-button top-icon" title="帮助" onClick={()=>switchSection('settings')}><CircleHelp size={20}/></button><button className="icon-button top-icon" title="查看需要关注的平台" onClick={()=>{switchSection('providers');setCategory('需关注')}}><Bell size={19}/>{warnings.length>0 && <span className="notif-dot"/>}</button><button className="identity-account-trigger" title="身份与 Google 登录" onClick={()=>setIdentityOpen(true)}>
+    </div><div className="status-anchor">
+      <button className="topbar-mode status-trigger" aria-label="查看连接及同步状态" aria-expanded={statusOpen} onClick={()=>setStatusOpen(v=>!v)}><span className="pulse-dot"/>{isAndroid?'Android Connected':desktop?'Desktop Connected':'Web Preview'}</button>
+      {statusOpen && <div className="status-popover" role="region" aria-label="运行状态详情">
+       <strong>运行状态</strong>
+       <div><span>当前模式</span><b>{isAndroid?'Android':desktop?'Windows 桌面端':'网页预览'}</b></div>
+       <div><span>已授权账户</span><b>{linkedCount}</b></div>
+       <div><span>同步正常</span><b>{connectedCount}</b></div>
+       <div><span>最后成功采样</span><b>{lastSuccess?new Date(lastSuccess).toLocaleString('zh-CN'):'尚无成功记录'}</b></div>
+       <small>额度与授权信息仅在当前设备保存，Google 身份不等于第三方平台授权。</small>
+      </div>}
+     </div><button className="icon-button top-icon" title="帮助" onClick={()=>switchSection('settings')}><CircleHelp size={20}/></button><button className="icon-button top-icon" title="查看需要关注的平台" onClick={()=>{switchSection('providers');setCategory('需关注')}}><Bell size={19}/>{warnings.length>0 && <span className="notif-dot"/>}</button><button className="identity-account-trigger" title="身份与 Google 登录" onClick={()=>setIdentityOpen(true)}>
       {googleIdentity?.profile?<img src="./google-mark.svg" alt=""/>:<ShieldCheck size={17}/>}
       <span>{googleIdentity?.profile?.name||'本地模式'}</span>
      </button></div>
@@ -428,13 +443,13 @@ function App() {
        </div>
      </div>
      <section className="stats-grid">
-      <div className="stat-card"><div className="stat-heading"><span>已添加平台</span><span className="stat-icon"><LayoutDashboard size={18}/></span></div><div className="stat-value">{viewing.length.toString().padStart(2,'0')}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot lime"/> 多平台统一总览</div></div>
-      <div className="stat-card"><div className="stat-heading"><span>已配置额度</span><span className="stat-icon"><Gauge size={18}/></span></div><div className="stat-value">{activeCount.toString().padStart(2,'0')}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot sky"/> 包含实时与手动记录</div></div>
-      <div className="stat-card"><div className="stat-heading"><span>同步正常</span><span className="stat-icon"><Cloud size={18}/></span></div><div className="stat-value">{connectedCount.toString().padStart(2,'0')}<span>个连接</span></div><div className="stat-foot"><span className="tiny-dot lime"/> {linkedCount} 个已授权 · 90 秒巡检</div></div>
-      <div className="stat-card"><div className="stat-heading"><span>需要关注</span><span className="stat-icon"><Bell size={18}/></span></div><div className="stat-value">{warnings.length.toString().padStart(2,'0')}<span>项需关注</span></div><div className="stat-foot"><span className={'tiny-dot '+(warnings.length?'coral':'lime')}/> {pausedCount?pausedCount+' 个源采集暂停或超时':warnings.length?'额度接近风险阈值':'尚无检测到的异常'}</div></div>
+      <div className="stat-card"><div className="stat-heading"><span>已添加平台</span><span className="stat-icon"><LayoutDashboard size={18}/></span></div><div className="stat-value">{viewing.length}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot lime"/> 多平台统一总览</div></div>
+      <div className="stat-card"><div className="stat-heading"><span>已配置额度</span><span className="stat-icon"><Gauge size={18}/></span></div><div className="stat-value">{activeCount}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot sky"/> 包含实时与手动记录</div></div>
+      <div className="stat-card"><div className="stat-heading"><span>同步正常</span><span className="stat-icon"><Cloud size={18}/></span></div><div className="stat-value">{connectedCount}<span>个连接</span></div><div className="stat-foot"><span className="tiny-dot lime"/> {linkedCount} 个已授权 · 90 秒巡检</div></div>
+      <div className="stat-card"><div className="stat-heading"><span>需要关注</span><span className="stat-icon"><Bell size={18}/></span></div><div className="stat-value">{warnings.length}<span>项需关注</span></div><div className="stat-foot"><span className={'tiny-dot '+(warnings.length?'coral':'lime')}/> {pausedCount?pausedCount+' 个源采集暂停或超时':warnings.length?'额度接近风险阈值':'尚无检测到的异常'}</div></div>
      </section>
      <div className="section-heading"><div><div className="section-kicker">平台与账号</div><h2>我的平台 <span className="heading-count">{viewing.length}</span></h2><p>追踪你最常用的平台和服务额度</p></div><div className="section-tools"><button className="text-button" onClick={()=>void refreshAll()}><RefreshCcw className={refreshing?'spin':''} size={16}/>刷新</button><button className="text-button" onClick={()=>switchSection('providers')}>查看全部 <ArrowRight size={16}/></button></div></div>
-     {topCards.length ? <div className="card-grid featured-grid">{topCards.map(p=><ProviderCard key={p.id} data={p} isDemo={demoMode} onEdit={edit} onRefresh={p=>void refreshOne(p)} now={now}/>)}</div> :
+     {topCards.length ? <div className="card-grid featured-grid">{topCards.map(p=><ProviderCard key={p.id} data={p} isDemo={demoMode} onEdit={edit} onDetails={showDetails} onRefresh={p=>void refreshOne(p)} now={now}/>)}</div> :
      <div className="empty-onboarding"><Wallet size={25}/><div><strong>尚未绑定任何平台</strong><p>选择 DeepSeek、OpenAI API 或中转站，连接后在看板与桌面组件查看余额。</p></div><button className="primary-button smaller" onClick={add}><Plus size={16}/>绑定第一个账号</button></div>}
      <section className="bottom-grid"><div className="activity-panel"><div className="panel-title"><div><span className="section-kicker">同步记录</span><h3>平台状态</h3></div><span className="panel-annotation">最近更新</span></div>
        {configured.length ? configured.slice(0,5).map(p=>{const def=definitions.find(d=>d.kind===p.kind);return <div className="activity-line" key={p.id}><span className={'activity-symbol hue-'+(def?.hue||'slate')}>{p.kind==='relay'?<Wallet size={16}/>:<img alt="" src={'./provider-icons/'+(['chatgpt','openai-api'].includes(p.kind)?'openai':p.kind)+'.svg'} />}</span><div className="activity-copy"><strong>{p.name}</strong><small>{p.webMonitored?'官网登录监测':p.connected?'官方接口同步':'本地手动记录'}</small></div><span className={'activity-amount '+(quotaAlert(p,now)?'warn':'')}>{valueText(p)} <ArrowUpRight size={14}/></span></div>}) : <div className="empty-list"><Cloud size={26}/><p>暂无额度记录，点击卡片添加数据</p></div>}
@@ -447,7 +462,7 @@ function App() {
     {section==='providers' && <>
      <div className="page-title"><span className="section-kicker">平台与账号</span><h1>我的平台<span className="title-dot">.</span></h1><p>每一个额度，都清晰可见。已配置与未连接的平台会明确区分。</p></div>
      <div className="toolbar"><div className="tabs">{['全部','API','订阅','需关注'].map(x=><button key={x} className={category===x?'tab active':'tab'} onClick={()=>setCategory(x)}>{x}</button>)}</div><div className="toolbar-right"><label className="search"><Search size={17}/><input placeholder="搜索平台..." value={query} onChange={e=>setQuery(e.target.value)}/></label><button className="primary-button smaller" onClick={add}><Plus size={18}/> 添加平台</button></div></div>
-     <div className="card-grid all-grid">{filtered.map(p=><ProviderCard key={p.id} data={p} isDemo={demoMode} onEdit={edit} onRefresh={p=>void refreshOne(p)} now={now}/>)}<button className="add-card" onClick={add}><span><Plus size={27}/></span><strong>添加更多平台</strong><small>手动管理或连接官方 API</small></button></div>
+     <div className="card-grid all-grid">{filtered.map(p=><ProviderCard key={p.id} data={p} isDemo={demoMode} onEdit={edit} onDetails={showDetails} onRefresh={p=>void refreshOne(p)} now={now}/>)}<button className="add-card" onClick={add}><span><Plus size={27}/></span><strong>添加更多平台</strong><small>手动管理或连接官方 API</small></button></div>
      {!filtered.length && !!items.length && <div className="no-results"><Search size={28}/><p>没有匹配的平台，尝试更换筛选条件。</p></div>}
     </>}
     {section==='insights' && <>
@@ -466,10 +481,35 @@ function App() {
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.3</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.4</span><span>本地优先 · 安全管理</span></footer>
   </div>
   <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}
    knownProviders={items.filter(p=>p.connected||p.webMonitored).map(p=>({id:p.id,name:p.name,account:p.account}))}/>
+  {detailTarget && <div className="detail-shade" onMouseDown={e=>{if(e.target===e.currentTarget)setDetailTarget(null)}}>
+   <section className="detail-panel" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <header className="detail-head"><div><span className="section-kicker">账户概览</span><h2 id="detail-title">额度详情</h2><p>查看状态与变化，配置操作放在次级入口。</p></div><button className="icon-button" aria-label="关闭额度详情" onClick={()=>setDetailTarget(null)}><X size={21}/></button></header>
+    <div className="detail-scroll">
+     {items.length>1 && <div className="detail-account-tabs" role="group" aria-label="切换查看账号">{items.map(p=><button key={p.id} className={detailProvider?.id===p.id?'selected':''} onClick={()=>setDetailTarget(p.id)}>{p.name}{p.account?' · '+p.account:''}</button>)}</div>}
+     {detailProvider ? <>
+      <div className="detail-summary">
+       <div><span className="detail-overline">{detailProvider.category==='API'?'API 额度':'订阅额度'}</span><h3>{detailProvider.name}</h3><small>{detailProvider.account||'当前账号'}</small></div>
+       <div className="detail-balance"><small>{metricText(detailProvider)}</small><strong>{valueText(detailProvider)}</strong></div>
+      </div>
+      <div className="detail-facts">
+       <div><span>同步状态</span><strong>{syncHealth(detailProvider,now)==='healthy'?'同步正常':syncHealth(detailProvider,now)==='delayed'?'数据已过期':syncHealth(detailProvider,now)==='error'?'采样异常':syncHealth(detailProvider,now)==='pending'?'等待首次同步':'本地手动记录'}</strong></div>
+       <div><span>最近成功采样</span><strong>{detailProvider.updatedAt?new Date(detailProvider.updatedAt).toLocaleString('zh-CN'):'尚无有效记录'}</strong></div>
+       <div><span>额度预警</span><strong>{detailProvider.alertEnabled?(quotaAlert(detailProvider,now)?'已达到阈值':(detailProvider.limit!=null?'已开启':'已开启 · 待设置上限')):'未开启'}</strong></div>
+      </div>
+      {syncDiagnostic(detailProvider,now) && <div className="detail-diagnostic" role="status">{syncDiagnostic(detailProvider,now)}</div>}
+      <HistoryChart key={detailProvider.id} provider={detailProvider} revision={historyRevision}/>
+     </> : <div className="detail-empty">尚无可查看的账号。请先在“我的平台”中添加。</div>}
+    </div>
+    <footer className="detail-actions">
+     <button className="outline-button" onClick={()=>setDetailTarget(null)}>返回</button>
+     {detailProvider && <button className="outline-button detail-secondary" onClick={()=>{setDetailTarget(null);edit(detailProvider)}}><Settings2 size={16}/>编辑配置</button>}
+    </footer>
+   </section>
+  </div>}
   {editor && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget && !busy)setEditor(null)}}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
    <div className="modal-header"><div><span className="section-kicker">账号管理</span><h2 id="modal-title">{editor.type==='new'?'绑定新的 AI 账号':'账号配置 · '+draft.name}</h2></div><button className="icon-button" onClick={()=>setEditor(null)} disabled={busy} title="关闭"><X size={21}/></button></div>
    <div className="modal-scroll">

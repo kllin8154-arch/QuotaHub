@@ -323,10 +323,11 @@ ipcMain.handle('quota:openExternal',async(_,raw)=>{
  await shell.openExternal(url.href);
 });
 let dashboardWindow=null;
-function createWindow() {
+function createWindow(detailId) {
  if(dashboardWindow&&!dashboardWindow.isDestroyed()){
   if(dashboardWindow.isMinimized())dashboardWindow.restore();
   dashboardWindow.show();dashboardWindow.focus();
+  if(detailId)dashboardWindow.webContents.send('quota:showDetail',detailId);
   return dashboardWindow;
  }
  const win=new BrowserWindow({width:1440,height:910,minWidth:880,minHeight:650,backgroundColor:'#08090d',title:'Agnovexa One',autoHideMenuBar:true,show:false,
@@ -341,7 +342,7 @@ function createWindow() {
   try{const u=new URL(url);if(u.protocol==='https:' && allowedHosts.has(u.hostname))shell.openExternal(url);}catch{}
  });
  if(!app.isPackaged && process.env.AIQUOTA_DEV==='1')win.loadURL('http://127.0.0.1:5173/');
- else win.loadFile(path.join(__dirname,'../dist/index.html'));
+ else win.loadFile(path.join(__dirname,'../dist/index.html'),detailId?{query:{detail:detailId}}:undefined);
  return win;
 }
 let gadget;
@@ -696,7 +697,10 @@ ipcMain.handle('widget:setLayout',(_,layout)=>setWidgetLayout(layout));
 ipcMain.handle('widget:getSettings',()=>({...widgetSettings}));
 ipcMain.handle('widget:toggle',()=>setCollapsed(!widgetSettings.collapsed,widgetSettings.collapseMode==='none'?'orb':undefined));
 ipcMain.handle('widget:setCollapseMode',(_,mode)=>setCollapseMode(mode));
-ipcMain.handle('widget:dashboard',()=>{createWindow();return true});
+ipcMain.handle('widget:dashboard',(_event,id)=>{
+ if(id!==undefined && (typeof id!=='string' || id.length>110 || (id!=='first'&&!/^[\w-]{2,110}$/.test(id))))throw Error('无效的账号详情请求');
+ createWindow(id);return true;
+});
 app.on('second-instance',(_event,argv)=>{
  if(!primaryInstance)return;
  if(argv.includes('--dashboard'))createWindow();

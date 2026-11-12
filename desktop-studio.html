@@ -553,6 +553,18 @@ body.runtime .widget.settings-open .widget-resize-grip{display:none}
 .agnovexa-brand-preview{display:flex;align-items:center;gap:11px;border:1px solid #39434c;border-radius:12px;padding:12px;background:#242d35;color:#f4f6f5;font-size:14px;font-weight:700}
 .agnovexa-brand-preview img{width:39px;height:39px;flex-shrink:0}
 .agnovexa-brand-preview small{display:block;margin-top:4px;font-size:10px;color:#a7b7b3;font-weight:500}
+/* v0.13.4 — one footer action and clickable account rows. */
+.widget .w-foot{justify-content:flex-end;padding-right:17px}
+.widget .w-foot button{color:inherit;opacity:.9;font-size:11px;font-weight:650;border:1px solid transparent;border-radius:8px;padding:6px 8px;transition:background .18s ease,opacity .18s ease,border-color .18s ease}
+.widget .w-foot button:hover{background:#ffffff1d;border-color:#ffffff28;opacity:1}
+.widget .w-foot button:active{background:#ffffff30}
+.widget .w-foot button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.widget .w-row[role="button"]{cursor:pointer;border-radius:9px;transition:background .18s ease}
+.widget .w-row[role="button"]:hover{background:#ffffff12}
+.widget .w-row[role="button"]:active{background:#ffffff1d}
+.widget .w-row[role="button"]:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
+.widget.clear .w-row[role="button"]:hover{background:#1b36501a}
+@media(prefers-reduced-motion:reduce){.widget .w-row[role="button"],.widget .w-foot button{transition:none}}
 </style></head>
 <body>
 <div class="studio">
@@ -600,7 +612,7 @@ body.runtime .widget.settings-open .widget-resize-grip{display:none}
       <div class="w-row"><div class="provider-icon claude"><img src="./provider-icons/claude.svg" alt="Claude"/></div><div><div class="row-name">Claude</div><div class="row-meta">尚未连接 · 手动记录</div></div><div class="row-value"><strong>--</strong><small>待记录</small></div></div>
     </div>
     <div class="w-graph" aria-label="仅预览模式模拟走势"><i style="height:24%"></i><i style="height:46%"></i><i style="height:31%"></i><i style="height:57%"></i><i style="height:39%"></i><i style="height:82%"></i><i style="height:62%"></i><i style="height:72%"></i><i style="height:43%"></i><i style="height:55%"></i><i style="height:67%"></i><i style="height:51%"></i><i style="height:74%"></i></div>
-    <footer class="w-foot"><span>● 示例数值 · 本机预览</span><button id="openDashboard">查看详情 ↗</button></footer>
+    <footer class="w-foot"><button id="openDashboard">查看详情 ↗</button></footer>
     <div id="widgetResize" class="widget-resize-grip" title="拖动调整宽度与高度" aria-label="调整组件尺寸"><svg viewBox="0 0 18 18"><path d="m6 15 9-9M11 15l4-4"/></svg></div>
     <section class="widget-settings" id="widgetSettings" aria-label="组件外观设置">
       <div class="widget-settings-head"><strong>外观与布局</strong><button id="widgetSettingsClose" aria-label="关闭外观设置"><svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
@@ -751,7 +763,11 @@ $('#widgetRefresh').addEventListener('click',async()=>{
  }
 });
 $('#widgetMode').addEventListener('click',()=>applyLayout({card:'rail',rail:'side',side:'card'}[lay]));
-$('#openDashboard').addEventListener('click',()=>{if(window.quotaWidget?.openDashboard)window.quotaWidget.openDashboard();else window.open('/?demo=1','_blank','noopener')});
+function openWidgetDetail(id='first') {
+ if(window.quotaWidget?.openDashboard)void window.quotaWidget.openDashboard(id);
+ else window.open('/?detail='+encodeURIComponent(id),'_blank','noopener,noreferrer');
+}
+$('#openDashboard').addEventListener('click',()=>openWidgetDetail('first'));
 let drag=null;$('#dragHandle').addEventListener('pointerdown',e=>{if(document.body.classList.contains('runtime')||e.target.closest('button'))return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,left:parseFloat(w.style.left)||50,top:parseFloat(w.style.top)||46};$('#dragHandle').setPointerCapture(e.pointerId)});
 $('#dragHandle').addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id)return;const rect=vp.getBoundingClientRect();const x=drag.left+(e.clientX-drag.x)/rect.width*100,y=drag.top+(e.clientY-drag.y)/rect.height*100;w.style.left=Math.max(13,Math.min(87,x))+'%';w.style.top=Math.max(20,Math.min(77,y))+'%'});
 $('#dragHandle').addEventListener('pointerup',()=>{
@@ -810,8 +826,7 @@ function renderNativeAccounts(all) {
  if(mini)mini.textContent=accounts.length+' 个账号 · '+connected+' 已连接';
  const tile=$('.w-banner strong');
  if(tile)tile.textContent=String(accounts.length).padStart(2,'0');
- const foot=$('.w-foot span');
- if(foot)foot.textContent='● 本地账户数据 · 不含演示余额';
+ // Footer intentionally contains only the primary details action.
  const list=$('.w-list');
  list.replaceChildren();
  w.classList.toggle('is-empty',accounts.length===0);
@@ -834,6 +849,12 @@ function renderNativeAccounts(all) {
  }
  for(const p of accounts.slice(0,5)){
   const row=document.createElement('div');row.className='w-row';
+  row.setAttribute('role','button');row.tabIndex=0;
+  row.setAttribute('aria-label','查看 '+p.name+' 的额度详情');
+  row.addEventListener('click',()=>openWidgetDetail(p.id));
+  row.addEventListener('keydown',event=>{
+   if(event.key==='Enter'||event.key===' '){event.preventDefault();openWidgetDetail(p.id)}
+  });
   const health=nativeHealth(p);
   if(health==='delayed'||health==='error')row.classList.add('is-stale');
   if(p.syncError)row.title='采集暂停，已保留最后成功数据；请检查平台官网或网络后刷新。';

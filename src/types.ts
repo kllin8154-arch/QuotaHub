@@ -28,6 +28,7 @@ export type Bridge = { connect:(kind:'deepseek'|'openai-api'|'openrouter'|'relay
  googleSignOut?:()=>Promise<GoogleIdentityState>;
  googleCancel?:()=>Promise<boolean>;
  onIdentity?:(callback:(status:GoogleIdentityState)=>void)=>(()=>void);
+ onDetailRequested?:(callback:(id:string)=>void)=>(()=>void);
  onSnapshot?:(callback:(message:SnapshotMessage)=>void)=>(()=>void);
  }
 declare global { interface Window { quotaBridge?: Bridge } }
