@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createRetryGate } = require('./retryGate.cjs');
 const { visibleQuotaReset } = require('./quotaReset.cjs');
+const { windowsFromVisibleText, planTierFromVisibleText } = require('./usageWindows.cjs');
 
 const SITES = Object.freeze({
   chatgpt:{url:'https://chatgpt.com/settings/usage',hosts:['chatgpt.com'],auth:['auth.openai.com','openai.com','login.openai.com','accounts.google.com','login.microsoftonline.com','appleid.apple.com']},
@@ -162,15 +163,17 @@ const READ_SCRIPT=[
  "const root=document.querySelector('main')||document.querySelector('[role=main]')||document.body;",
  "const raw=(root?.innerText||'').slice(0,18000);",
  "const lines=raw.split(/\\r?\\n/).map(s=>s.trim().replace(/\\s+/g,' ')).filter(Boolean).slice(0,400);",
- "const terms=/(余额|剩余|可用|额度|消费|费用|使用量|已使用|本月|本周|当前周期|当前会话|限额|请求|积分|重置|恢复时间|重新可用|倒计时|balance|remaining|available|usage|used|credits?|spend|cost|weekly|session|monthly|limit|quota|resets?|refreshes)/i;",
+ "const terms=/(余额|剩余|可用|额度|消费|费用|使用量|已使用|本月|本周|当前周期|当前会话|限额|请求|积分|重置|恢复时间|重新可用|倒计时|当前套餐|我的套餐|套餐等级|current plan|your plan|my plan|balance|remaining|available|usage|used|credits?|spend|cost|weekly|session|monthly|limit|quota|resets?|refreshes)/i;",
  "const secret=/(api[ _-]*key|password|secret|bearer|authorization|sk-[a-z0-9]|cookie|验证码|密钥|密码|token\\s*[:=]|令牌|@)/i;",
  "const out=[];",
  "for(let i=0;i<lines.length&&out.length<60;i++){",
  "const s=lines[i];if(!terms.test(s)||secret.test(s))continue;",
  "out.push(s.slice(0,120));",
- "for(let j=1;j<=5&&i+j<lines.length;j++){const next=lines[i+j];if(secret.test(next))continue;if(/(?:\\d{1,3}(?:\\.\\d+)?\\s*%|[¥￥$]\\s*\\d|\\d[\\d,.]*\\s*(?:CNY|USD|元|人民币|美元)|20\\d{2}[-\\/年.]\\d{1,2}|\\d+\\s*(?:hours?|hrs?|minutes?|mins?|days?|小时|分钟|天))/i.test(next)){out.push(next.slice(0,100));break}if(j>1&&/^(?:充值余额|赠送余额|累计消费金额|总可用余额|每周限额)/.test(next))break}",
+ "if(/(?:\d{1,3}(?:\.\d+)?\s*%|[¥￥$]\s*\d|\d[\d,.]*\s*(?:CNY|USD|元|人民币|美元))/i.test(s))continue;for(let j=1;j<=5&&i+j<lines.length;j++){const next=lines[i+j];if(secret.test(next))continue;if(/(?:5\s*[- ]?\s*(?:小时|hours?|hrs?)\s*(?:限额|额度|limit)|(?:每周|本周|weekly)\s*(?:限额|额度|limit))/i.test(next))break;if(/(?:\d{1,3}(?:\.\d+)?\s*%|[¥￥$]\s*\d|\d[\d,.]*\s*(?:CNY|USD|元|人民币|美元)|20\d{2}[-\/年.]\d{1,2}|\d+\s*(?:hours?|hrs?|minutes?|mins?|days?|小时|分钟|天))/i.test(next)){out.push(next.slice(0,100));break}if(j>1&&/^(?:充值余额|赠送余额|累计消费金额|总可用余额|每周限额)/.test(next))break}",
  "}",
- "return out.join('\\n').slice(0,6000);",
+ "const planLines=(document.body?.innerText||'').slice(0,6500).split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);",
+ "for(let i=0;i<planLines.length;i++){const x=planLines[i];if(!/^(?:当前套餐|我的套餐|套餐等级|当前订阅|Current plan|Your plan|My plan)/i.test(x)||secret.test(x)||/(?:升级|推荐|Upgrade)/i.test(x))continue;const y=planLines[i+1]||'';if(/^(?:ChatGPT\\s+)?(?:Plus|Pro(?:\\s*(?:100|200|500|5x|10x|20x))?|(?:5|10|20)x\\s*Pro|Go|Free|Business|Enterprise|Edu)$/i.test(y)){out.push('当前套餐');out.push(y);break}if(/(?:Plus|Pro\\s*(?:100|200|500|5x|10x|20x)|Go|Free|Business|Enterprise|Edu)/i.test(x)){out.push(x);break}}",
+ "return out.join('\\n').slice(0,8000);",
  '})()'
 ].join('');
 function sessionKey(kind,id){return kind+'--'+id}
@@ -212,7 +215,8 @@ async function autoLinkDeepSeek(kind,id,win){
    category:kind==='chatgpt'?'订阅':'API',
    metric:point.metric,unit:point.unit,value:point.value,source:'web',
    webMonitored:true,connected:false,updatedAt:point.at,
-   resetAt:point.resetAt,resetBasis:point.resetBasis,resetPrecision:point.resetPrecision,resetObservedAt:point.resetObservedAt}});
+   resetAt:point.resetAt,resetBasis:point.resetBasis,resetPrecision:point.resetPrecision,resetObservedAt:point.resetObservedAt,
+   quotaWindows:point.quotaWindows,planTier:point.planTier,planObservedAt:point.planObservedAt}});
   const t=autoTimers.get(id);if(t){clearInterval(t);autoTimers.delete(id)}
   // The account has been linked: return focus to the QuotaHub dashboard.
   if(!win.isDestroyed())win.hide();
@@ -277,7 +281,11 @@ async function read(kind,id) {
  const found=kind==='deepseek' ? [...deepSeekCandidates(text),...candidates(text)] : kind==='chatgpt' ? [...chatGPTCandidates(text),...candidates(text)] : candidates(text);
  if(!found.length)throw Error('没有发现可核对的额度数值，请检查页面内容和登录状态');
  const readAt=new Date().toISOString();
- return {candidates:found,readAt,reset:visibleQuotaReset(text,Date.parse(readAt)),url:new URL(url).origin+new URL(url).pathname};
+ const quotaWindows=kind==='chatgpt'?windowsFromVisibleText(text,Date.parse(readAt)):[];
+ const planTier=kind==='chatgpt'?planTierFromVisibleText(text):null;
+ return {candidates:found,readAt,
+  reset:kind==='chatgpt'?null:visibleQuotaReset(text,Date.parse(readAt)),
+  windows:quotaWindows,planTier,url:new URL(url).origin+new URL(url).pathname};
 }
 async function sample(kind,id,manual=false) {
  const records=readFile(bindingsPath,{});
@@ -290,6 +298,7 @@ async function sample(kind,id,manual=false) {
  const point={id,kind,value:found.value,limit:found.limit??null,unit:found.unit,metric:found.metric,
    at:new Date().toISOString(),source:'web',readAt:web.readAt,
    resetAt:web.reset?.resetAt??null,resetBasis:web.reset?.resetBasis??null,
+   quotaWindows:web.windows,planTier:web.planTier,planObservedAt:web.readAt,
    resetPrecision:web.reset?.resetPrecision??null,resetObservedAt:web.readAt,
    ...(found.breakdown?{breakdown:found.breakdown}:{})};
  // Persist the latest *confirmed* reset metadata even when a quota value is unchanged
@@ -297,7 +306,8 @@ async function sample(kind,id,manual=false) {
  const current=readFile(bindingsPath,{});
  if(current[id]?.kind===kind){
   current[id]={...current[id],resetAt:point.resetAt,resetBasis:point.resetBasis,
-   resetPrecision:point.resetPrecision,resetObservedAt:point.resetObservedAt};
+   resetPrecision:point.resetPrecision,resetObservedAt:point.resetObservedAt,
+   quotaWindows:point.quotaWindows,planTier:point.planTier,planObservedAt:point.planObservedAt};
   writeFile(bindingsPath,current);
  }
  record(point);

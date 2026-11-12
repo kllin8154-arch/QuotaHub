@@ -47,8 +47,8 @@ async function main(){
  const chosen=initial.candidates.find(x=>x.unit==='%')
  const registered=await handlers.get('quota:webBind')(null,'chatgpt',id,chosen)
  assert.equal(registered.value,35)
- assert(registered.resetAt && Date.parse(registered.resetAt)>Date.now(),'official reset captured automatically')
- const firstReset=registered.resetAt
+ assert.equal(registered.resetAt,null,'ChatGPT no longer fabricates a universal reset from an unlabeled timer')
+ assert.deepEqual(registered.quotaWindows,[],'No recognized 5-hour/weekly sections means no windows')
  assert.equal(updates.length,1)
  assert.equal((await handlers.get('quota:history')(null,id)).length,1)
  // The same value is deduplicated, no fake high-frequency trend points.
@@ -61,7 +61,7 @@ async function main(){
  assert.deepEqual(rows.map(x=>x.value),[35,48])
  assert.equal(rows[1].source,'web')
  const afterReset=(await handlers.get('quota:webBindings')())[id]
- assert(afterReset.resetAt && Date.parse(afterReset.resetAt)>Date.parse(firstReset),'reset time independently refreshed when usage changes')
+ assert.equal(afterReset.resetAt,null,'A generic reset remains unverified for ChatGPT')
  assert(rows[1].at && Number.isFinite(Date.parse(rows[1].at)))
  const bindings=await handlers.get('quota:webBindings')()
  assert(bindings[id]?.signature===chosen.signature)
@@ -93,6 +93,16 @@ async function main(){
  const finalHistory=await handlers.get('quota:history')(null,id)
  assert.deepEqual(finalHistory.map(x=>x.value),[35,48,49])
  assert.equal(updates.filter(x=>x.type==='snapshot'&&x.point.value===49).length,1,'one actual sample must not be duplicated')
+ // Actual Codex usage has two unrelated allowance windows; a unified reset must never be inferred.
+ visible='本周已使用\n49%\n账户余额\n¥26.80\n5 小时限额\n3小时34分钟 后重置\n剩余 0%\n每周限额\n6天22小时 后重置\n剩余 84%\n当前套餐\nPlus'
+ const twoWindows=await handlers.get('quota:webSample')(null,'chatgpt',id)
+ assert.equal(twoWindows.resetAt,null)
+ assert.deepEqual(twoWindows.quotaWindows.map(w=>[w.id,w.remainingPercent]),[['five-hour',0],['weekly',84]])
+ assert.equal(twoWindows.planTier,'Plus')
+ const savedWindows=(await handlers.get('quota:webBindings')())[id]
+ assert.equal(savedWindows.quotaWindows.length,2,'Window metadata persists when main usage value is unchanged')
+ assert.equal(savedWindows.planTier,'Plus')
+ assert.equal((await handlers.get('quota:history')(null,id)).length,3,'Two windows must not create synthetic sampling history')
  await handlers.get('quota:webUnbind')(null,id)
  assert(!(await handlers.get('quota:webBindings')())[id])
  assert.equal((await handlers.get('quota:history')(null,id)).length,3,'Historical data preserved on disconnect')

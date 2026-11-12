@@ -22,10 +22,10 @@ function parseCandidate(s,now){
   if(d)return {date:d,basis:'explicit',precision:'date'};
  }
  // No approximate date is fabricated from a time-of-day alone.
- m=text.match(/(?:\bin\s*|后|剩余|还有)?\s*(\d+(?:\.\d+)?\s*(?:days?|d|天|hours?|hrs?|hr|h|小时|minutes?|mins?|min|m|分钟)(?:\s*(?:and|与|零)?\s*\d+(?:\.\d+)?\s*(?:days?|d|天|hours?|hrs?|hr|h|小时|minutes?|mins?|min|m|分钟))*)/i);
+ m=text.match(/(?:\bin\s*|后|剩余|还有)?\s*(\d+(?:\.\d+)?\s*(?:days?|d|天|hours?|hrs?|hr|h|小时|minutes?|mins?|min|m|分钟|分)(?:\s*(?:and|与|零)?\s*\d+(?:\.\d+)?\s*(?:days?|d|天|hours?|hrs?|hr|h|小时|minutes?|mins?|min|m|分钟|分))*)/i);
  if(!m)return null;
  let ms=0,parts=0;
- for(const v of m[1].matchAll(/(\d+(?:\.\d+)?)\s*(days?|d|天|hours?|hrs?|hr|h|小时|minutes?|mins?|min|m|分钟)/gi)){
+ for(const v of m[1].matchAll(/(\d+(?:\.\d+)?)\s*(days?|d|天|hours?|hrs?|hr|h|小时|minutes?|mins?|min|m|分钟|分)/gi)){
   const number=Number(v[1]);const unit=v[2].toLowerCase();
   const factor=/^(?:d|day|days|天)$/.test(unit)?86400000:/^(?:h|hr|hrs|hour|hours|小时)$/.test(unit)?3600000:60000;
   ms+=number*factor;parts++;
@@ -53,4 +53,4 @@ function visibleQuotaReset(text,now=Date.now()){
  if(found.some(x=>Math.abs(Date.parse(x.resetAt)-Date.parse(first.resetAt))>60000))return null;
  return first;
 }
-module.exports={visibleQuotaReset};
+module.exports={visibleQuotaReset,parseCandidate};

@@ -71,6 +71,15 @@ function cleanWidgetAccounts(list) {
   resetBasis:['explicit','countdown'].includes(p.resetBasis)?p.resetBasis:null,
   resetPrecision:['minute','date'].includes(p.resetPrecision)?p.resetPrecision:null,
   resetObservedAt:typeof p.resetObservedAt==='string'&&Number.isFinite(Date.parse(p.resetObservedAt))?p.resetObservedAt.slice(0,40):'',
+  planTier:typeof p.planTier==='string'&&/^(?:Plus|Pro(?: (?:100|200|500|5x|10x|20x|（等级未细分）))?|Go|Free|Business|Enterprise|Edu)$/.test(p.planTier)?p.planTier:null,
+  planObservedAt:typeof p.planObservedAt==='string'&&Number.isFinite(Date.parse(p.planObservedAt))?p.planObservedAt.slice(0,40):'',
+  quotaWindows:Array.isArray(p.quotaWindows)?p.quotaWindows.slice(0,2).filter(w=>w&&['five-hour','weekly'].includes(w.id))
+    .map(w=>({id:w.id,label:w.id==='weekly'?'每周限额':'5 小时限额',
+      remainingPercent:typeof w.remainingPercent==='number'&&Number.isFinite(w.remainingPercent)&&w.remainingPercent>=0&&w.remainingPercent<=100?w.remainingPercent:null,
+      resetAt:typeof w.resetAt==='string'&&Number.isFinite(Date.parse(w.resetAt))?w.resetAt.slice(0,40):null,
+      resetBasis:['explicit','countdown'].includes(w.resetBasis)?w.resetBasis:null,
+      resetPrecision:['minute','date'].includes(w.resetPrecision)?w.resetPrecision:null,
+      observedAt:typeof w.observedAt==='string'&&Number.isFinite(Date.parse(w.observedAt))?w.observedAt.slice(0,40):''})):[],
   syncError:typeof (p.syncError||p.error)==='string'?String(p.syncError||p.error).slice(0,160):''
  }));
 }
@@ -234,7 +243,8 @@ function notifyQuota(payload){
    kind:p.kind,category:p.category||'API',value:payload.point.value,unit:payload.point.unit,metric:payload.point.metric,
    connected:true,webMonitored:true,source:'web',updatedAt:payload.point.at,syncError:'',
    resetAt:payload.point.resetAt??null,resetBasis:payload.point.resetBasis??null,
-   resetPrecision:payload.point.resetPrecision??null,resetObservedAt:payload.point.resetObservedAt
+   resetPrecision:payload.point.resetPrecision??null,resetObservedAt:payload.point.resetObservedAt,
+   quotaWindows:payload.point.quotaWindows,planTier:payload.point.planTier,planObservedAt:payload.point.planObservedAt
   };
   saveWidgetAccounts(list.some(x=>x.id===p.id)?
    list.map(x=>x.id===p.id?{...x,...account}:x):[...list,account]);
@@ -255,7 +265,8 @@ function notifyQuota(payload){
       source:payload.point.source,syncError:'',
       ...(payload.point.source==='web'?{resetAt:payload.point.resetAt??null,
         resetBasis:payload.point.resetBasis??null,resetPrecision:payload.point.resetPrecision??null,
-        resetObservedAt:payload.point.resetObservedAt}:{})
+        resetObservedAt:payload.point.resetObservedAt,quotaWindows:payload.point.quotaWindows,
+        planTier:payload.point.planTier,planObservedAt:payload.point.planObservedAt}:{})
     }:p));
    }
   }

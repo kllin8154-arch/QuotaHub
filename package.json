@@ -1,6 +1,6 @@
 {
   "name": "agnovexa-one",
-  "version": "0.13.5",
+  "version": "0.13.7",
   "private": true,
   "description": "Agnovexa One - unified AI balances and subscription monitoring",
   "type": "module",
@@ -24,7 +24,10 @@
     "test:retry": "node tests/test-retry-gate.cjs",
     "test:ui": "node tests/test-ui-v0134.cjs",
     "test:catalog": "node tests/test-agent-library.cjs",
-    "test:reset": "node tests/test-subscription-reset.cjs"
+    "test:reset": "node tests/test-subscription-reset.cjs",
+    "test:windows": "node tests/test-usage-windows.cjs",
+    "test:windows-ui": "node tests/test-ui-v0136.cjs",
+    "test:readscript": "node tests/test-readscript-windows.cjs"
   },
   "dependencies": {
     "@capacitor/browser": "^7.0.3",

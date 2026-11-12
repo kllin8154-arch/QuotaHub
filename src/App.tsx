@@ -8,6 +8,7 @@ import HistoryChart from './HistoryChart'
 import { syncHealth, lastSampleText, syncDiagnostic, safeErrorText } from './syncHealth'
 import { quotaAlert } from './quotaAlert'
 import { quotaResetLabel } from './resetDisplay'
+import { activeWindows,windowRemaining,windowPercent,windowShortName,visiblePlan } from './usageWindowsDisplay'
 import IdentityPanel from './IdentityPanel'
 import PlatformLibrary from './PlatformLibrary'
 import type { WebQuotaCandidate, GoogleIdentityState } from './types'
@@ -47,6 +48,7 @@ function valueText(p: Provider): string {
  return prefix + formatNumber(p.value)
 }
 function metricText(p: Provider): string {
+ if(p.kind==='chatgpt'&&activeWindows(p).some(w=>w.id==='five-hour'))return '5 小时剩余使用比例'
  return p.unit==='%' ? (p.metric==='balance'?'当前剩余使用比例':'当前已使用比例') :
    p.metric === 'balance' ? '当前可用余额' : p.metric === 'spend' ? '本月 API 费用' : '本周期已使用'
 }
@@ -76,7 +78,7 @@ function ProviderCard({ data, isDemo, onEdit, onDetails, onRefresh, now }: { dat
   </div>
   <div className="provider-intro">
    <div className="eyebrow">{data.category === 'API' ? 'API 服务' : '订阅服务'}</div>
-   <h3>{data.name}</h3>
+   <h3>{data.name}{data.kind==='chatgpt'&&data.planTier&&<span className="plan-pill">{visiblePlan(data)}</span>}</h3>
    <p>{data.account ? '账号 · ' + data.account : info?.tagline || data.note || '自定义平台用量追踪'}</p>
   </div>
   <div className="provider-metric">
@@ -91,7 +93,11 @@ function ProviderCard({ data, isDemo, onEdit, onDetails, onRefresh, now }: { dat
   </div>}
   {diagnostic && !isDemo && <div className="sync-diagnostic" role="status">{diagnostic}</div>}
   {risk && <div className="quota-alert-hint" role="status">额度预警 · {data.account||data.name} · {data.metric==='balance'?'剩余额度低于':'用量达到'} {data.alertPercent??(data.metric==='balance'?20:80)}% 阈值</div>}
-  {data.category==='订阅' && <div className="subscription-reset" title="自动识别官网公开可见的额度恢复时间">{quotaResetLabel(data,now)}</div>}
+  {data.kind==='chatgpt' ? <div className="quota-window-list">
+   {activeWindows(data).length ? activeWindows(data).map(w=><div className="quota-window" key={w.id}>
+    <span>{windowShortName(w)} <b>{windowPercent(w)}</b></span><span title={w.resetAt||'官方未提供恢复时间'}>{windowRemaining(w,now)}</span>
+   </div>):<div className="subscription-reset">限额恢复时间：官方暂未提供</div>}
+  </div> : data.category==='订阅'&&<div className="subscription-reset" title="自动识别官网公开可见的额度恢复时间">{quotaResetLabel(data,now)}</div>}
   </div>
   <div className="card-bottom">
    <div className="status-with-dot" title={diagnostic||syncLabel}><span className={'dot ' + (isDemo?'dot-demo':health==='healthy'?'dot-online':health==='manual'&&hasData?'dot-manual':'dot-off')}></span>{syncLabel}</div>
@@ -140,7 +146,9 @@ function App() {
  const pausedCount = items.filter(x=>['error','delayed'].includes(syncHealth(x,now))).length
  const warnings = viewing.filter(x=>quotaAlert(x,now)||['error','delayed'].includes(syncHealth(x,now)))
  const configured = viewing.filter(x => x.value != null)
- const nextReset = viewing.filter(x => x.category==='订阅' && x.resetAt && Date.parse(x.resetAt)>now && x.resetObservedAt).sort((a,b)=>Date.parse(a.resetAt!)-Date.parse(b.resetAt!))[0]
+ const nextReset = viewing.filter(x => x.category==='订阅' && x.kind!=='chatgpt' && x.resetAt && Date.parse(x.resetAt)>now && x.resetObservedAt).sort((a,b)=>Date.parse(a.resetAt!)-Date.parse(b.resetAt!))[0]
+  const nextQuotaWindow = viewing.flatMap(p=>activeWindows(p).filter(w=>w.resetAt&&Date.parse(w.resetAt)>now).map(w=>({name:p.name,window:w})))
+   .sort((a,b)=>Date.parse(a.window.resetAt!)-Date.parse(b.window.resetAt!))[0]
  const platformChoices = definitions
  const detailProvider = detailTarget ? (detailTarget==='first'?items[0]:items.find(p=>p.id===detailTarget)) : undefined
  const lastSuccess = Math.max(0,...items.map(p=>Date.parse(p.updatedAt||'')).filter(Number.isFinite))
@@ -157,7 +165,8 @@ function App() {
    if(!accountSyncReady||!window.quotaBridge?.updateWidgetAccounts)return
    void window.quotaBridge.updateWidgetAccounts(items.map(p=>({
     id:p.id,name:p.name,account:p.account,kind:p.kind,value:p.value,unit:p.unit,metric:p.metric,updatedAt:p.updatedAt,connected:p.connected||p.webMonitored,webMonitored:p.webMonitored,source:p.source,error:p.error?safeErrorText(p.error):'',category:p.category,
-    resetAt:p.resetAt??null,resetBasis:p.resetBasis??null,resetPrecision:p.resetPrecision??null,resetObservedAt:p.resetObservedAt
+    resetAt:p.resetAt??null,resetBasis:p.resetBasis??null,resetPrecision:p.resetPrecision??null,resetObservedAt:p.resetObservedAt,
+    quotaWindows:p.quotaWindows,planTier:p.planTier,planObservedAt:p.planObservedAt
    }))).catch(()=>{})
  },[items,accountSyncReady])
 
@@ -166,7 +175,7 @@ function App() {
     setItems(previous=>previous.filter(p=>!isFactoryPlaceholder(p)))
     return
   }
-  void Promise.all([window.quotaBridge.connected(),window.quotaBridge.webBindings?.()??Promise.resolve({} as Record<string,{kind:ProviderKind;signature:string;metric:Metric;unit:string;name?:string;last?:{value:number;at:string;unit:string;metric:Metric}|null;resetAt?:string|null;resetBasis?:'explicit'|'countdown'|null;resetPrecision?:'date'|'minute'|null;resetObservedAt?:string}>)])
+  void Promise.all([window.quotaBridge.connected(),window.quotaBridge.webBindings?.()??Promise.resolve({} as Record<string,{kind:ProviderKind;signature:string;metric:Metric;unit:string;name?:string;last?:{value:number;at:string;unit:string;metric:Metric}|null;resetAt?:string|null;resetBasis?:'explicit'|'countdown'|null;resetPrecision?:'date'|'minute'|null;resetObservedAt?:string;quotaWindows?:Provider['quotaWindows'];planTier?:string|null;planObservedAt?:string}>)])
     .then(([ids,bindings])=>{
       setItems(previous=>{
        const list=previous.filter(p=>!(isFactoryPlaceholder(p)&&!ids.includes(p.id)&&!bindings[p.id]))
@@ -176,7 +185,7 @@ function App() {
          return {...p,connected:ids.includes(p.id),webMonitored:!!b,
           source:b?'web':ids.includes(p.id)?'api':p.source,
           ...(newer?{value:b.last!.value,unit:b.last!.unit,metric:b.last!.metric,updatedAt:b.last!.at}: {}),
-          ...(b?.resetObservedAt?{resetAt:b.resetAt??null,resetBasis:b.resetBasis??null,resetPrecision:b.resetPrecision??null,resetObservedAt:b.resetObservedAt}:{})}
+          ...(b?.resetObservedAt?{resetAt:b.resetAt??null,resetBasis:b.resetBasis??null,resetPrecision:b.resetPrecision??null,resetObservedAt:b.resetObservedAt,quotaWindows:b.quotaWindows,planTier:b.planTier,planObservedAt:b.planObservedAt}:{})}
         })
        for(const [id,b] of Object.entries(bindings)){
         if(list.some(p=>p.id===id))continue
@@ -187,7 +196,8 @@ function App() {
          value:b.last?.value??null,limit:null,connected:ids.includes(id),
          webMonitored:true,source:'web',updatedAt:b.last?.at,
          resetAt:b.resetAt??null,resetBasis:b.resetBasis??null,
-         resetPrecision:b.resetPrecision??null,resetObservedAt:b.resetObservedAt})
+         resetPrecision:b.resetPrecision??null,resetObservedAt:b.resetObservedAt,
+         quotaWindows:b.quotaWindows,planTier:b.planTier,planObservedAt:b.planObservedAt})
        }
        return list
       })
@@ -212,12 +222,14 @@ function App() {
        {...x,value:point.value,limit:point.limit,unit:point.unit,metric:point.metric,
         webMonitored:true,source:'web',updatedAt:point.at,error:'',
         resetAt:point.resetAt??null,resetBasis:point.resetBasis??null,
-        resetPrecision:point.resetPrecision??null,resetObservedAt:point.resetObservedAt}:x):
+        resetPrecision:point.resetPrecision??null,resetObservedAt:point.resetObservedAt,
+        quotaWindows:point.quotaWindows,planTier:point.planTier,planObservedAt:point.planObservedAt}:x):
        [...list,{id:p.id,kind:p.kind,name:p.name,account:'',category:p.category,
         mode:'live',metric:p.metric,unit:p.unit,value:p.value,limit:point.limit,
         connected:false,webMonitored:true,source:'web',updatedAt:point.at,
         resetAt:point.resetAt??null,resetBasis:point.resetBasis??null,
-        resetPrecision:point.resetPrecision??null,resetObservedAt:point.resetObservedAt}]
+        resetPrecision:point.resetPrecision??null,resetObservedAt:point.resetObservedAt,
+        quotaWindows:point.quotaWindows,planTier:point.planTier,planObservedAt:point.planObservedAt}]
     })
     setHistoryRevision(n=>n+1)
     setEditor(x=>x?.id===p.id?null:x)
@@ -227,7 +239,8 @@ function App() {
     setItems(items=>items.map(x=>x.id===p.id?{...x,value:p.value,limit:p.limit??x.limit,
       metric:p.metric,unit:p.unit,connected:p.source==='api'?true:x.connected,
       source:p.source,webMonitored:p.source==='web'?true:x.webMonitored,updatedAt:p.at,error:'',
-      ...(p.source==='web'?{resetAt:p.resetAt??null,resetBasis:p.resetBasis??null,resetPrecision:p.resetPrecision??null,resetObservedAt:p.resetObservedAt}:{})}:x))
+      ...(p.source==='web'?{resetAt:p.resetAt??null,resetBasis:p.resetBasis??null,resetPrecision:p.resetPrecision??null,resetObservedAt:p.resetObservedAt,
+    quotaWindows:p.quotaWindows,planTier:p.planTier,planObservedAt:p.planObservedAt}:{})}:x))
     setHistoryRevision(n=>n+1)
    } else {
     setItems(items=>items.map(x=>x.id===message.id?{...x,error:safeErrorText(message.reason)}:x))
@@ -364,7 +377,7 @@ function App() {
    let live: LiveResult | null = null
    const relay:RelayConfig|undefined=draft.kind==='relay'?{baseUrl:draft.relayUrl.trim(),mode:draft.relayMode,userId:draft.relayUserId.trim(),path:draft.relayPath.trim(),field:draft.relayField.trim(),unit:draft.relayUnit.trim(),divisor:Number(draft.relayDivisor||1)}:undefined
    if (secret.trim() && window.quotaBridge && liveCapable) live = await window.quotaBridge.connect(draft.kind as 'deepseek' | 'openai-api' | 'openrouter' | 'relay', id, secret.trim(),relay)
-   let webResult:{id:string;kind:ProviderKind;value:number;limit:number|null;unit:string;metric:Metric;at:string;source:'web';resetAt?:string|null;resetBasis?:'explicit'|'countdown'|null;resetPrecision?:'date'|'minute'|null;resetObservedAt?:string}|null=null
+   let webResult:{id:string;kind:ProviderKind;value:number;limit:number|null;unit:string;metric:Metric;at:string;source:'web';resetAt?:string|null;resetBasis?:'explicit'|'countdown'|null;resetPrecision?:'date'|'minute'|null;resetObservedAt?:string;quotaWindows?:Provider['quotaWindows'];planTier?:string|null;planObservedAt?:string}|null=null
    if(selectedWeb && window.quotaBridge?.webBind){
     const candidate=webCandidates.find(c=>c.signature===selectedWeb)
     if(!candidate)throw new Error('请选择需要跟踪的网页指标')
@@ -381,6 +394,8 @@ function App() {
     resetBasis:webResult?webResult.resetBasis??null:old?.resetBasis,
     resetPrecision:webResult?webResult.resetPrecision??null:old?.resetPrecision,
     resetObservedAt:webResult?.resetObservedAt||old?.resetObservedAt,
+    quotaWindows:webResult?webResult.quotaWindows:old?.quotaWindows,
+    planTier:webResult?webResult.planTier:old?.planTier,planObservedAt:webResult?.planObservedAt||old?.planObservedAt,
     webMonitored:!!webResult||!!old?.webMonitored,source:webResult?'web':live?'api':old?.source||'manual',
     updatedAt:webResult?.at||live?.updatedAt || (observed||old?.value===value?old?.updatedAt:value !== null ? new Date().toISOString() : old?.updatedAt),
     daily:live?.daily || old?.daily,bonus:live?.bonus ?? old?.bonus,error:live||webResult?'':old?.error?safeErrorText(old.error):'',alertEnabled:draft.alertEnabled,alertPercent:Number(draft.alertPercent),relay:relay||old?.relay
@@ -484,7 +499,8 @@ function App() {
       </div><div className="side-panel"><div className="panel-title"><div><span className="section-kicker">快速操作</span><h3>常用操作</h3></div></div>
        <button className="quick-action" onClick={add}><span className="quick-icon red"><Plus size={22}/></span><span><strong>绑定 AI 平台账号</strong><small>新增订阅或 API 账户</small></span><ArrowRight size={18}/></button>
        <button className="quick-action" onClick={()=>switchSection('insights')}><span className="quick-icon blue"><TrendingUp size={21}/></span><span><strong>查看额度趋势</strong><small>监控使用量与预算占比</small></span><ArrowRight size={18}/></button>
-       <div className="next-reset"><Clock3 size={17}/>{nextReset?'订阅 · '+nextReset.name+' · '+quotaResetLabel(nextReset,now):'订阅额度恢复时间由官网自动读取；官方未提供时不会推算'}</div>
+       <div className="next-reset"><Clock3 size={17}/>{nextQuotaWindow?'订阅 · '+nextQuotaWindow.name+' · '+windowShortName(nextQuotaWindow.window)+' · '+windowRemaining(nextQuotaWindow.window,now):
+ nextReset?'订阅 · '+nextReset.name+' · '+quotaResetLabel(nextReset,now):'订阅限额恢复时间由官网自动读取；未提供时不会推算'}</div>
       </div></section>
     </>}
     {section==='providers' && <>
@@ -509,7 +525,7 @@ function App() {
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.4</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.7</span><span>本地优先 · 安全管理</span></footer>
   </div>
   {libraryOpen && <PlatformLibrary onClose={()=>setLibraryOpen(false)} onProvider={chooseProvider} onOfficial={goTo}/>}
   <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}
@@ -528,8 +544,17 @@ function App() {
        <div><span>同步状态</span><strong>{syncHealth(detailProvider,now)==='healthy'?'同步正常':syncHealth(detailProvider,now)==='delayed'?'数据已过期':syncHealth(detailProvider,now)==='error'?'采样异常':syncHealth(detailProvider,now)==='pending'?'等待首次同步':'本地手动记录'}</strong></div>
        <div><span>最近成功采样</span><strong>{detailProvider.updatedAt?new Date(detailProvider.updatedAt).toLocaleString('zh-CN'):'尚无有效记录'}</strong></div>
        <div><span>额度预警</span><strong>{detailProvider.alertEnabled?(quotaAlert(detailProvider,now)?'已达到阈值':(detailProvider.limit!=null?'已开启':'已开启 · 待设置上限')):'未开启'}</strong></div>
-       {detailProvider.category==='订阅' && <div><span>订阅额度恢复</span><strong>{quotaResetLabel(detailProvider,now)}</strong></div>}
+       {detailProvider.kind==='chatgpt'&&<div><span>账号套餐</span><strong>{visiblePlan(detailProvider)}</strong></div>}
+       {detailProvider.category==='订阅' && detailProvider.kind!=='chatgpt' && <div><span>订阅额度恢复</span><strong>{quotaResetLabel(detailProvider,now)}</strong></div>}
       </div>
+      {detailProvider.kind==='chatgpt'&&<div className="detail-quota-windows">
+       <h3>独立使用额度</h3>
+       {activeWindows(detailProvider).length?activeWindows(detailProvider).map(w=><div className="detail-quota-window" key={w.id}>
+        <div><strong>{w.label}</strong><b>{windowPercent(w)} 剩余</b></div>
+        <div className="progress-track"><div style={{width:(w.remainingPercent??0)+'%'}}/></div>
+        <small>{windowRemaining(w,now)}</small>
+       </div>):<p>官方未提供可核实的独立限额窗口。</p>}
+      </div>}
       {syncDiagnostic(detailProvider,now) && <div className="detail-diagnostic" role="status">{syncDiagnostic(detailProvider,now)}</div>}
       <HistoryChart key={detailProvider.id} provider={detailProvider} revision={historyRevision}/>
      </> : <div className="detail-empty">尚无可查看的账号。请先在“我的平台”中添加。</div>}

@@ -553,6 +553,15 @@ body.runtime .widget.settings-open .widget-resize-grip{display:none}
 .agnovexa-brand-preview{display:flex;align-items:center;gap:11px;border:1px solid #39434c;border-radius:12px;padding:12px;background:#242d35;color:#f4f6f5;font-size:14px;font-weight:700}
 .agnovexa-brand-preview img{width:39px;height:39px;flex-shrink:0}
 .agnovexa-brand-preview small{display:block;margin-top:4px;font-size:10px;color:#a7b7b3;font-weight:500}
+/* v0.13.6: compact, separate reset windows; never show native scrollbars. */
+.widget .row-windows{margin-top:4px;display:grid;gap:2px;font-size:9.5px;line-height:1.3;color:#b5dccc;min-width:0;max-width:220px}
+.widget .row-window{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.widget.clear .row-windows{color:#386f60}
+body.runtime,body.runtime .studio,body.runtime .viewport,body.runtime .widget{overflow:hidden!important;scrollbar-width:none!important}
+body.runtime ::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+body.runtime .widget.layout-card .w-row{padding:8px 0!important}
+body.runtime .widget .w-list{overflow:hidden!important;min-height:0}
+body.runtime .widget .w-foot{flex:none}
 /* v0.13.4 — one footer action and clickable account rows. */
 .widget .w-foot{justify-content:flex-end;padding-right:17px}
 .widget .w-foot button{color:inherit;opacity:.9;font-size:11px;font-weight:650;border:1px solid transparent;border-radius:8px;padding:6px 8px;transition:background .18s ease,opacity .18s ease,border-color .18s ease}
@@ -871,13 +880,36 @@ function renderNativeAccounts(all) {
    logo.append(img);
   }
   const block=document.createElement('div');
-  const name=document.createElement('div');name.className='row-name';name.textContent=p.name;
+  const name=document.createElement('div');name.className='row-name';name.textContent=p.name+(p.kind==='chatgpt'&&p.planTier?' · '+p.planTier:'');
   const note=document.createElement('div');note.className='row-meta';
   note.textContent=(p.account||'个人账号')+' · '+(
    health==='error'?'采集异常':health==='delayed'?'数据过期':health==='pending'?'等待首次同步':
    health==='healthy'?'同步正常':p.value===null?'未配置':'手动记录');
   block.append(name,note);
-  if(p.category==='订阅'||['chatgpt','claude','cursor','gemini'].includes(p.kind)){
+  if(p.kind==='chatgpt'){
+   const windows=Array.isArray(p.quotaWindows)?p.quotaWindows.filter(x=>x&&['five-hour','weekly'].includes(x.id)).slice(0,2):[];
+   const summary=document.createElement('div');summary.className='row-windows';
+   if(!windows.length)summary.textContent='限额窗口：官网暂未提供';
+   else for(const entry of windows){
+    const line=document.createElement('div');line.className='row-window';
+    const remaining=entry.remainingPercent===null||!Number.isFinite(entry.remainingPercent)?'--':entry.remainingPercent+'%';
+    const target=Date.parse(entry.resetAt||'');
+    const observed=Date.parse(entry.observedAt||'');
+    let duration='重置时间未识别';
+    if(Number.isFinite(target)&&Number.isFinite(observed)&&target>Date.now()){
+     if(entry.resetBasis==='countdown'){
+      const mins=Math.ceil((target-Date.now())/60000);
+      const days=Math.floor(mins/1440),hours=Math.floor((mins%1440)/60),minutes=mins%60;
+      duration=(days?days+'天':'')+(hours?hours+'小时':'')+(!days?minutes+'分':'')+'后重置';
+     }else duration=new Date(target).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})+'重置';
+     if(Date.now()-observed>300000||p.syncError)duration+=' · 上次识别';
+    }
+    line.textContent=(entry.id==='five-hour'?'5小时':'每周')+' '+remaining+' · '+duration;
+    line.title=entry.label||'独立额度窗口';
+    summary.append(line);
+   }
+   block.append(summary);
+  }else if(p.category==='订阅'||['claude','cursor','gemini'].includes(p.kind)){
    const info=document.createElement('div');info.className='row-reset';
    const target=Date.parse(p.resetAt||'');
    const observed=Date.parse(p.resetObservedAt||'');
@@ -897,7 +929,7 @@ function renderNativeAccounts(all) {
    big.textContent=symbol+Number(p.value).toLocaleString('zh-CN',{maximumFractionDigits:2})+(p.unit==='%'?'%':'');
   }else big.textContent='—';
   const label=document.createElement('small');label.textContent=p.unit==='%'?
-   (p.metric==='balance'?'剩余使用比例':'已使用比例'):
+   (p.kind==='chatgpt'&&Array.isArray(p.quotaWindows)&&p.quotaWindows.some(w=>w.id==='five-hour')?'5小时剩余':p.metric==='balance'?'剩余使用比例':'已使用比例'):
    p.metric==='balance'?'剩余额度':p.metric==='spend'?'本月消费':'已使用额度';
   if(p.value!==null&&!['CNY','USD','%'].includes(p.unit))label.textContent+=' · '+p.unit;
   if(p.value!==null&&(health==='error'||health==='delayed'))label.textContent+=' · 旧值';

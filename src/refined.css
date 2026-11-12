@@ -387,3 +387,21 @@
 .quota-refined .subscription-reset{font-size:11px;line-height:1.5;color:var(--qh-muted);overflow-wrap:anywhere;padding-top:2px}
 @media(max-width:700px){.quota-refined .library-shade{padding:9px}.quota-refined .platform-library{max-height:calc(100vh - 18px);border-radius:13px}.quota-refined .library-header{padding:18px}.quota-refined .library-toolbar{padding:0 18px 12px}.quota-refined .library-groups{padding:0 18px 11px}.quota-refined .library-scroll{padding:2px 18px 16px}.quota-refined .library-grid{grid-template-columns:1fr}.quota-refined .library-footer{padding:13px 18px}.quota-refined .library-search{max-width:none;flex:1 1 100%;min-width:0}}
 @media(prefers-reduced-motion:reduce){.quota-refined .library-entry,.quota-refined .library-entry-arrow{transition:none}}
+
+/* v0.13.6 — separate Codex 5-hour/weekly allowances and verified plan tier. */
+.quota-refined .plan-pill{display:inline-flex;align-items:center;vertical-align:middle;max-width:120px;padding:4px 8px;margin-left:10px;border-radius:7px;border:1px solid var(--qh-panel-edge);background:var(--qh-over);color:var(--qh-muted);font-size:10px;font-weight:650;letter-spacing:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quota-refined .quota-window-list{display:grid;gap:8px;min-width:0;padding-top:7px}
+.quota-refined .quota-window{display:flex;justify-content:space-between;align-items:baseline;gap:12px;min-width:0;color:var(--qh-muted);font-size:11px;line-height:1.45}
+.quota-refined .quota-window span:first-child{flex:none;white-space:nowrap}
+.quota-refined .quota-window b{color:var(--qh-text);font-size:12px;font-weight:750;font-variant-numeric:tabular-nums}
+.quota-refined .quota-window span:last-child{min-width:0;text-align:right;overflow-wrap:anywhere}
+.quota-refined .detail-quota-windows{border:1px solid var(--qh-panel-edge);border-radius:14px;background:var(--qh-surface);padding:16px;margin:14px 0}
+.quota-refined .detail-quota-windows h3{font-size:13px;margin:0 0 12px;color:var(--qh-text)}
+.quota-refined .detail-quota-window{padding:12px 0}
+.quota-refined .detail-quota-window+.detail-quota-window{border-top:1px solid var(--qh-line)}
+.quota-refined .detail-quota-window>div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:12px}
+.quota-refined .detail-quota-window>div:first-child b{font-variant-numeric:tabular-nums}
+.quota-refined .detail-quota-window .progress-track{margin:10px 0 7px}
+.quota-refined .detail-quota-window small,.quota-refined .detail-quota-windows p{font-size:11px;line-height:1.5;color:var(--qh-muted)}
+.quota-refined .provider-card{min-height:330px}
+@media(max-width:560px){.quota-refined .quota-window{flex-wrap:wrap;gap:2px}.quota-refined .quota-window span:last-child{text-align:left;flex:1 1 100%}}
