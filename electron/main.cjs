@@ -60,12 +60,17 @@ function cleanWidgetAccounts(list) {
   id:p.id.slice(0,105),name:String(p.name||'未命名平台').slice(0,60),
   account:String(p.account||'').slice(0,65),
   kind:['relay','deepseek','chatgpt','openai-api','openrouter','claude','gemini','siliconflow','qwen','kimi','zhipu','cursor','custom'].includes(p.kind)?p.kind:'custom',
+  category:p.category==='订阅'?'订阅':'API',
   value:typeof p.value==='number'&&Number.isFinite(p.value)?p.value:null,
   unit:String(p.unit||'').slice(0,18),
   metric:['balance','spend','usage'].includes(p.metric)?p.metric:'balance',
   connected:!!p.connected||!!p.webMonitored,
   webMonitored:!!p.webMonitored,source:['web','api','manual'].includes(p.source)?p.source:'manual',
   updatedAt:typeof p.updatedAt==='string'?p.updatedAt.slice(0,40):'',
+  resetAt:typeof p.resetAt==='string'&&Number.isFinite(Date.parse(p.resetAt))?p.resetAt.slice(0,40):null,
+  resetBasis:['explicit','countdown'].includes(p.resetBasis)?p.resetBasis:null,
+  resetPrecision:['minute','date'].includes(p.resetPrecision)?p.resetPrecision:null,
+  resetObservedAt:typeof p.resetObservedAt==='string'&&Number.isFinite(Date.parse(p.resetObservedAt))?p.resetObservedAt.slice(0,40):'',
   syncError:typeof (p.syncError||p.error)==='string'?String(p.syncError||p.error).slice(0,160):''
  }));
 }
@@ -82,7 +87,8 @@ function saveWidgetAccounts(accounts) {
 }
 
 const supported = new Set(['deepseek', 'openai-api', 'openrouter','relay']);
-const allowedHosts = new Set(['platform.deepseek.com','chatgpt.com','platform.openai.com','claude.ai','gemini.google.com','cloud.siliconflow.cn','openrouter.ai','bailian.console.aliyun.com','www.kimi.com','open.bigmodel.cn','cursor.com','docs.newapi.ai','console.cloud.google.com']);
+const allowedHosts = new Set(['platform.deepseek.com','chatgpt.com','platform.openai.com','claude.ai','gemini.google.com','cloud.siliconflow.cn','openrouter.ai','bailian.console.aliyun.com','www.kimi.com','open.bigmodel.cn','cursor.com','docs.newapi.ai','console.cloud.google.com',
+ 'opencode.ai','cloud.tencent.com','developers.openai.com','docs.anthropic.com','github.com','cline.bot','roocode.com','kilo.ai','windsurf.com','continue.dev','aider.chat','block.github.io','www.all-hands.dev','www.trae.ai','www.augmentcode.com']);
 function loadSecrets() { try { const x=JSON.parse(fs.readFileSync(secretsPath,'utf8')); return x && typeof x==='object' && !Array.isArray(x) ? x : {}; } catch { return {}; } }
 function saveSecrets(state) { const temp=secretsPath+'.tmp'; fs.writeFileSync(temp, JSON.stringify(state), {mode:0o600}); fs.renameSync(temp,secretsPath); }
 function verify(kind,id) {
@@ -225,8 +231,10 @@ function notifyQuota(payload){
   const list=getWidgetAccounts();
   const account={
    id:p.id,name:p.name||'DeepSeek API',account:'',
-   kind:p.kind,value:payload.point.value,unit:payload.point.unit,metric:payload.point.metric,
-   connected:true,webMonitored:true,source:'web',updatedAt:payload.point.at,syncError:''
+   kind:p.kind,category:p.category||'API',value:payload.point.value,unit:payload.point.unit,metric:payload.point.metric,
+   connected:true,webMonitored:true,source:'web',updatedAt:payload.point.at,syncError:'',
+   resetAt:payload.point.resetAt??null,resetBasis:payload.point.resetBasis??null,
+   resetPrecision:payload.point.resetPrecision??null,resetObservedAt:payload.point.resetObservedAt
   };
   saveWidgetAccounts(list.some(x=>x.id===p.id)?
    list.map(x=>x.id===p.id?{...x,...account}:x):[...list,account]);
@@ -244,7 +252,10 @@ function notifyQuota(payload){
       ...p,value:payload.point.value,limit:payload.point.limit,unit:payload.point.unit,
       metric:payload.point.metric,updatedAt:payload.point.at,
       connected:true,webMonitored:payload.point.source==='web'||p.webMonitored,
-      source:payload.point.source,syncError:''
+      source:payload.point.source,syncError:'',
+      ...(payload.point.source==='web'?{resetAt:payload.point.resetAt??null,
+        resetBasis:payload.point.resetBasis??null,resetPrecision:payload.point.resetPrecision??null,
+        resetObservedAt:payload.point.resetObservedAt}:{})
     }:p));
    }
   }

@@ -3,6 +3,7 @@ const { BrowserWindow, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createRetryGate } = require('./retryGate.cjs');
+const { visibleQuotaReset } = require('./quotaReset.cjs');
 
 const SITES = Object.freeze({
   chatgpt:{url:'https://chatgpt.com/settings/usage',hosts:['chatgpt.com'],auth:['auth.openai.com','openai.com','login.openai.com','accounts.google.com','login.microsoftonline.com','appleid.apple.com']},
@@ -161,13 +162,13 @@ const READ_SCRIPT=[
  "const root=document.querySelector('main')||document.querySelector('[role=main]')||document.body;",
  "const raw=(root?.innerText||'').slice(0,18000);",
  "const lines=raw.split(/\\r?\\n/).map(s=>s.trim().replace(/\\s+/g,' ')).filter(Boolean).slice(0,400);",
- "const terms=/(余额|剩余|可用|额度|消费|费用|使用量|已使用|本月|本周|当前周期|当前会话|限额|请求|积分|balance|remaining|available|usage|used|credits?|spend|cost|weekly|session|monthly|limit|quota)/i;",
+ "const terms=/(余额|剩余|可用|额度|消费|费用|使用量|已使用|本月|本周|当前周期|当前会话|限额|请求|积分|重置|恢复时间|重新可用|倒计时|balance|remaining|available|usage|used|credits?|spend|cost|weekly|session|monthly|limit|quota|resets?|refreshes)/i;",
  "const secret=/(api[ _-]*key|password|secret|bearer|authorization|sk-[a-z0-9]|cookie|验证码|密钥|密码|token\\s*[:=]|令牌|@)/i;",
  "const out=[];",
  "for(let i=0;i<lines.length&&out.length<60;i++){",
  "const s=lines[i];if(!terms.test(s)||secret.test(s))continue;",
  "out.push(s.slice(0,120));",
- "for(let j=1;j<=5&&i+j<lines.length;j++){const next=lines[i+j];if(secret.test(next))continue;if(/(?:\\d{1,3}(?:\\.\\d+)?\\s*%|[¥￥$]\\s*\\d|\\d[\\d,.]*\\s*(?:CNY|USD|元|人民币|美元))/i.test(next)){out.push(next.slice(0,100));break}if(j>1&&/^(?:充值余额|赠送余额|累计消费金额|总可用余额|每周限额)/.test(next))break}",
+ "for(let j=1;j<=5&&i+j<lines.length;j++){const next=lines[i+j];if(secret.test(next))continue;if(/(?:\\d{1,3}(?:\\.\\d+)?\\s*%|[¥￥$]\\s*\\d|\\d[\\d,.]*\\s*(?:CNY|USD|元|人民币|美元)|20\\d{2}[-\\/年.]\\d{1,2}|\\d+\\s*(?:hours?|hrs?|minutes?|mins?|days?|小时|分钟|天))/i.test(next)){out.push(next.slice(0,100));break}if(j>1&&/^(?:充值余额|赠送余额|累计消费金额|总可用余额|每周限额)/.test(next))break}",
  "}",
  "return out.join('\\n').slice(0,6000);",
  '})()'
@@ -210,7 +211,8 @@ async function autoLinkDeepSeek(kind,id,win){
   notify({type:'linked',point,provider:{id,kind,name:kind==='chatgpt'?'ChatGPT':'DeepSeek API',
    category:kind==='chatgpt'?'订阅':'API',
    metric:point.metric,unit:point.unit,value:point.value,source:'web',
-   webMonitored:true,connected:false,updatedAt:point.at}});
+   webMonitored:true,connected:false,updatedAt:point.at,
+   resetAt:point.resetAt,resetBasis:point.resetBasis,resetPrecision:point.resetPrecision,resetObservedAt:point.resetObservedAt}});
   const t=autoTimers.get(id);if(t){clearInterval(t);autoTimers.delete(id)}
   // The account has been linked: return focus to the QuotaHub dashboard.
   if(!win.isDestroyed())win.hide();
@@ -274,7 +276,8 @@ async function read(kind,id) {
  if(typeof text!=='string'||!text.trim())throw Error('未识别到页面中的额度文字，请切换到官方额度页面');
  const found=kind==='deepseek' ? [...deepSeekCandidates(text),...candidates(text)] : kind==='chatgpt' ? [...chatGPTCandidates(text),...candidates(text)] : candidates(text);
  if(!found.length)throw Error('没有发现可核对的额度数值，请检查页面内容和登录状态');
- return {candidates:found,readAt:new Date().toISOString(),url:new URL(url).origin+new URL(url).pathname};
+ const readAt=new Date().toISOString();
+ return {candidates:found,readAt,reset:visibleQuotaReset(text,Date.parse(readAt)),url:new URL(url).origin+new URL(url).pathname};
 }
 async function sample(kind,id,manual=false) {
  const records=readFile(bindingsPath,{});
@@ -286,7 +289,17 @@ async function sample(kind,id,manual=false) {
  if(!found)throw Error('额度页面结构发生变化，需要重新选择要跟踪的指标');
  const point={id,kind,value:found.value,limit:found.limit??null,unit:found.unit,metric:found.metric,
    at:new Date().toISOString(),source:'web',readAt:web.readAt,
+   resetAt:web.reset?.resetAt??null,resetBasis:web.reset?.resetBasis??null,
+   resetPrecision:web.reset?.resetPrecision??null,resetObservedAt:web.readAt,
    ...(found.breakdown?{breakdown:found.breakdown}:{})};
+ // Persist the latest *confirmed* reset metadata even when a quota value is unchanged
+ // and therefore deliberately absent from the deduplicated history.
+ const current=readFile(bindingsPath,{});
+ if(current[id]?.kind===kind){
+  current[id]={...current[id],resetAt:point.resetAt,resetBasis:point.resetBasis,
+   resetPrecision:point.resetPrecision,resetObservedAt:point.resetObservedAt};
+  writeFile(bindingsPath,current);
+ }
  record(point);
  recovery.succeeded(id);
  notify({type:'snapshot',point,manual});

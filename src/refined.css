@@ -340,3 +340,50 @@
 @media(prefers-reduced-motion:reduce){
  .quota-refined .refined-actions button,.quota-refined .section-tools button{transition:none}
 }
+
+/* v0.13.5: platform catalog as searchable, lightweight entry point. */
+.quota-refined .library-shade{position:fixed;inset:0;z-index:96;display:flex;align-items:center;justify-content:center;padding:22px;background:#08121e91;backdrop-filter:blur(7px)}
+.quota-refined .platform-library{display:flex;flex-direction:column;width:min(915px,100%);max-height:min(765px,calc(100vh - 44px));min-height:300px;background:linear-gradient(137deg,var(--qh-bg1),var(--qh-bg2));border:1px solid var(--qh-panel-edge);border-radius:19px;box-shadow:0 24px 70px #08121e80;color:var(--qh-text);overflow:hidden}
+.quota-refined .library-header{display:flex;justify-content:space-between;gap:15px;padding:23px 26px 16px}
+.quota-refined .library-header h2{font-size:21px;letter-spacing:-.4px;margin:5px 0 7px}
+.quota-refined .library-header p{font-size:12px;color:var(--qh-muted);line-height:1.5;margin:0}
+.quota-refined .library-toolbar{padding:0 26px 14px;display:flex;align-items:center;gap:16px;justify-content:space-between;flex-wrap:wrap}
+.quota-refined .library-tabs{display:flex;align-items:center;gap:5px;background:var(--qh-over);padding:4px;border-radius:11px;border:1px solid var(--qh-line)}
+.quota-refined .library-tabs button{padding:9px 12px;border-radius:8px;font-size:12px;font-weight:650;color:var(--qh-muted)}
+.quota-refined .library-tabs button span{margin-left:5px;opacity:.7;font-size:10px}
+.quota-refined .library-tabs button.selected{color:var(--qh-text);background:var(--qh-surface);box-shadow:0 2px 8px #0002}
+.quota-refined .library-search{min-height:37px;display:flex;align-items:center;gap:9px;min-width:250px;flex:1;max-width:410px;padding:0 12px;color:var(--qh-muted);background:var(--qh-surface);border:1px solid var(--qh-panel-edge);border-radius:10px}
+.quota-refined .library-search:focus-within{border-color:var(--qh-accent);box-shadow:0 0 0 2px #d58c8c24}
+.quota-refined .library-search input{flex:1;min-width:0;width:100%;border:0;background:none;color:var(--qh-text);outline:0;font-size:12px}
+.quota-refined .library-groups{display:flex;gap:6px;flex-wrap:wrap;padding:0 26px 15px}
+.quota-refined .library-groups button{border:1px solid transparent;border-radius:8px;padding:6px 10px;color:var(--qh-muted);background:var(--qh-over);font-size:11px}
+.quota-refined .library-groups button:hover,.quota-refined .library-groups button.selected{color:var(--qh-text);border-color:var(--qh-panel-edge);background:var(--qh-surface)}
+.quota-refined .library-scroll{flex:1;min-height:0;overflow:auto;padding:2px 26px 23px}
+.quota-refined .library-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+.quota-refined .library-entry{position:relative;min-width:0;border:1px solid var(--qh-panel-edge);background:var(--qh-surface);border-radius:13px;color:var(--qh-text);transition:border-color .18s,background .18s,box-shadow .18s}
+.quota-refined .library-entry:hover,.quota-refined .library-entry.expanded{border-color:var(--qh-accent);box-shadow:0 5px 18px #07131e21}
+.quota-refined .quota-entry,.quota-refined .library-agent-main{width:100%;text-align:left;display:flex;align-items:center;gap:12px;padding:14px}
+.quota-refined .library-symbol{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;flex:none;color:var(--qh-text);background:var(--qh-over);border:1px solid var(--qh-line)}
+.quota-refined .library-entry-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.quota-refined .library-entry-copy strong{font-size:13px;font-weight:690;overflow-wrap:anywhere}
+.quota-refined .library-entry-copy small{font-size:11px;color:var(--qh-muted);line-height:1.35;overflow-wrap:anywhere}
+.quota-refined .library-entry-copy .library-micro{font-size:10px;color:var(--qh-subtle);line-height:1.4}
+.quota-refined .library-entry-arrow{flex:none;color:var(--qh-muted);transition:transform .16s}
+.quota-refined .expanded .library-entry-arrow{transform:rotate(90deg)}
+.quota-refined .library-agent-detail{border-top:1px solid var(--qh-line);padding:11px 14px 14px}
+.quota-refined .library-agent-detail p{margin:0 0 9px;font-size:11px;line-height:1.6;color:var(--qh-muted)}
+.quota-refined .library-agent-detail .library-caution{color:var(--qh-subtle)}
+.quota-refined .library-agent-buttons{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.quota-refined .library-agent-buttons button{display:inline-flex;gap:5px;align-items:center;padding:8px 10px;border:1px solid var(--qh-panel-edge);border-radius:8px;background:var(--qh-over);color:var(--qh-text);font-size:10px}
+.quota-refined .library-agent-buttons button:hover{border-color:var(--qh-accent);background:var(--qh-surface)}
+.quota-refined .library-agent-buttons .library-api-link{color:var(--qh-text)}
+.quota-refined .library-agent-buttons .library-official{color:var(--qh-muted)}
+.quota-refined .library-empty{padding:45px 20px;text-align:center;color:var(--qh-muted);font-size:12px;display:grid;justify-items:center;gap:10px}
+.quota-refined .library-footer{border-top:1px solid var(--qh-line);display:flex;justify-content:space-between;align-items:center;gap:18px;padding:15px 26px}
+.quota-refined .library-footer span{font-size:10px;color:var(--qh-muted);line-height:1.6}
+.quota-refined .library-footer button{flex:none;background:var(--qh-surface);border:1px solid var(--qh-panel-edge);color:var(--qh-text);border-radius:9px;padding:10px 13px;font-size:11px}
+.quota-refined .library-footer button:hover{border-color:var(--qh-accent)}
+.quota-refined .platform-library button:focus-visible{outline:2px solid var(--qh-accent);outline-offset:2px}
+.quota-refined .subscription-reset{font-size:11px;line-height:1.5;color:var(--qh-muted);overflow-wrap:anywhere;padding-top:2px}
+@media(max-width:700px){.quota-refined .library-shade{padding:9px}.quota-refined .platform-library{max-height:calc(100vh - 18px);border-radius:13px}.quota-refined .library-header{padding:18px}.quota-refined .library-toolbar{padding:0 18px 12px}.quota-refined .library-groups{padding:0 18px 11px}.quota-refined .library-scroll{padding:2px 18px 16px}.quota-refined .library-grid{grid-template-columns:1fr}.quota-refined .library-footer{padding:13px 18px}.quota-refined .library-search{max-width:none;flex:1 1 100%;min-width:0}}
+@media(prefers-reduced-motion:reduce){.quota-refined .library-entry,.quota-refined .library-entry-arrow{transition:none}}

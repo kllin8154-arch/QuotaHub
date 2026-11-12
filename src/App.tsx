@@ -7,13 +7,15 @@ import ReadableSelect from './ReadableSelect'
 import HistoryChart from './HistoryChart'
 import { syncHealth, lastSampleText, syncDiagnostic, safeErrorText } from './syncHealth'
 import { quotaAlert } from './quotaAlert'
+import { quotaResetLabel } from './resetDisplay'
 import IdentityPanel from './IdentityPanel'
+import PlatformLibrary from './PlatformLibrary'
 import type { WebQuotaCandidate, GoogleIdentityState } from './types'
 import type { RelayConfig } from './types'
 
 type Section = 'overview' | 'providers' | 'insights' | 'settings'
 type Editor = { type: 'edit' | 'new'; id?: string }
-type Draft = { kind: ProviderKind; name: string; account: string; category: 'API' | '订阅'; metric: Metric; value: string; limit: string; unit: string; reset: string; note: string; relayUrl: string; relayMode:'newapi-account'|'newapi-key'|'custom'; relayUserId:string; relayPath:string; relayField:string; relayUnit:string; relayDivisor:string; alertEnabled:boolean; alertPercent:string }
+type Draft = { kind: ProviderKind; name: string; account: string; category: 'API' | '订阅'; metric: Metric; value: string; limit: string; unit: string; note: string; relayUrl: string; relayMode:'newapi-account'|'newapi-key'|'custom'; relayUserId:string; relayPath:string; relayField:string; relayUnit:string; relayDivisor:string; alertEnabled:boolean; alertPercent:string }
 const KEY = 'aiquotahub.providers.v1'
 const isLiveKind = (kind:ProviderKind) => kind==='deepseek'||kind==='openai-api'||kind==='openrouter'||kind==='relay'
 const navItems: { id: Section; name: string; icon: typeof LayoutDashboard }[] = [
@@ -22,7 +24,7 @@ const navItems: { id: Section; name: string; icon: typeof LayoutDashboard }[] = 
  { id: 'insights', name: '额度趋势', icon: TrendingUp },
  { id: 'settings', name: '偏好设置', icon: Settings2 }
 ]
-const emptyDraft: Draft = { kind: 'custom', name: '', account: '', category: 'API', metric: 'balance', value: '', limit: '', unit: 'CNY', reset: '', note: '', relayUrl:'',relayMode:'newapi-account',relayUserId:'',relayPath:'/api/user/self',relayField:'data.balance',relayUnit:'额度点',relayDivisor:'1',alertEnabled:false,alertPercent:'20' }
+const emptyDraft: Draft = { kind: 'custom', name: '', account: '', category: 'API', metric: 'balance', value: '', limit: '', unit: 'CNY', note: '', relayUrl:'',relayMode:'newapi-account',relayUserId:'',relayPath:'/api/user/self',relayField:'data.balance',relayUnit:'额度点',relayDivisor:'1',alertEnabled:false,alertPercent:'20' }
 function isFactoryPlaceholder(p: Provider): boolean {
  const template=definitions.find(d=>d.kind===p.kind)
  return !!template && p.id===p.kind && p.name===template.name &&
@@ -89,6 +91,7 @@ function ProviderCard({ data, isDemo, onEdit, onDetails, onRefresh, now }: { dat
   </div>}
   {diagnostic && !isDemo && <div className="sync-diagnostic" role="status">{diagnostic}</div>}
   {risk && <div className="quota-alert-hint" role="status">额度预警 · {data.account||data.name} · {data.metric==='balance'?'剩余额度低于':'用量达到'} {data.alertPercent??(data.metric==='balance'?20:80)}% 阈值</div>}
+  {data.category==='订阅' && <div className="subscription-reset" title="自动识别官网公开可见的额度恢复时间">{quotaResetLabel(data,now)}</div>}
   </div>
   <div className="card-bottom">
    <div className="status-with-dot" title={diagnostic||syncLabel}><span className={'dot ' + (isDemo?'dot-demo':health==='healthy'?'dot-online':health==='manual'&&hasData?'dot-manual':'dot-off')}></span>{syncLabel}</div>
@@ -118,6 +121,7 @@ function App() {
  const [identityOpen,setIdentityOpen]=useState(false)
  const [statusOpen,setStatusOpen]=useState(false)
  const [detailTarget,setDetailTarget]=useState<string|null>(()=>new URLSearchParams(window.location.search).get('detail'))
+ const [libraryOpen,setLibraryOpen]=useState(false)
  const [addDifferentAccount,setAddDifferentAccount]=useState(false)
  const [googleIdentity,setGoogleIdentity]=useState<GoogleIdentityState|null>(null)
  const [accountSyncReady,setAccountSyncReady] = useState(!window.quotaBridge)
@@ -136,7 +140,7 @@ function App() {
  const pausedCount = items.filter(x=>['error','delayed'].includes(syncHealth(x,now))).length
  const warnings = viewing.filter(x=>quotaAlert(x,now)||['error','delayed'].includes(syncHealth(x,now)))
  const configured = viewing.filter(x => x.value != null)
- const nextReset = viewing.filter(x => x.reset && new Date(x.reset).getTime() >= Date.now()).sort((a,b) => (a.reset || '').localeCompare(b.reset || ''))[0]
+ const nextReset = viewing.filter(x => x.category==='订阅' && x.resetAt && Date.parse(x.resetAt)>now && x.resetObservedAt).sort((a,b)=>Date.parse(a.resetAt!)-Date.parse(b.resetAt!))[0]
  const platformChoices = definitions
  const detailProvider = detailTarget ? (detailTarget==='first'?items[0]:items.find(p=>p.id===detailTarget)) : undefined
  const lastSuccess = Math.max(0,...items.map(p=>Date.parse(p.updatedAt||'')).filter(Number.isFinite))
@@ -152,7 +156,8 @@ function App() {
  useEffect(() => {
    if(!accountSyncReady||!window.quotaBridge?.updateWidgetAccounts)return
    void window.quotaBridge.updateWidgetAccounts(items.map(p=>({
-    id:p.id,name:p.name,account:p.account,kind:p.kind,value:p.value,unit:p.unit,metric:p.metric,updatedAt:p.updatedAt,connected:p.connected||p.webMonitored,webMonitored:p.webMonitored,source:p.source,error:p.error?safeErrorText(p.error):''
+    id:p.id,name:p.name,account:p.account,kind:p.kind,value:p.value,unit:p.unit,metric:p.metric,updatedAt:p.updatedAt,connected:p.connected||p.webMonitored,webMonitored:p.webMonitored,source:p.source,error:p.error?safeErrorText(p.error):'',category:p.category,
+    resetAt:p.resetAt??null,resetBasis:p.resetBasis??null,resetPrecision:p.resetPrecision??null,resetObservedAt:p.resetObservedAt
    }))).catch(()=>{})
  },[items,accountSyncReady])
 
@@ -161,7 +166,7 @@ function App() {
     setItems(previous=>previous.filter(p=>!isFactoryPlaceholder(p)))
     return
   }
-  void Promise.all([window.quotaBridge.connected(),window.quotaBridge.webBindings?.()??Promise.resolve({} as Record<string,{kind:ProviderKind;signature:string;metric:Metric;unit:string;name?:string;last?:{value:number;at:string;unit:string;metric:Metric}|null}>)])
+  void Promise.all([window.quotaBridge.connected(),window.quotaBridge.webBindings?.()??Promise.resolve({} as Record<string,{kind:ProviderKind;signature:string;metric:Metric;unit:string;name?:string;last?:{value:number;at:string;unit:string;metric:Metric}|null;resetAt?:string|null;resetBasis?:'explicit'|'countdown'|null;resetPrecision?:'date'|'minute'|null;resetObservedAt?:string}>)])
     .then(([ids,bindings])=>{
       setItems(previous=>{
        const list=previous.filter(p=>!(isFactoryPlaceholder(p)&&!ids.includes(p.id)&&!bindings[p.id]))
@@ -170,7 +175,8 @@ function App() {
          const newer=b?.last && Date.parse(b.last.at)>=Date.parse(p.updatedAt||'1970-01-01')
          return {...p,connected:ids.includes(p.id),webMonitored:!!b,
           source:b?'web':ids.includes(p.id)?'api':p.source,
-          ...(newer?{value:b.last!.value,unit:b.last!.unit,metric:b.last!.metric,updatedAt:b.last!.at}: {})}
+          ...(newer?{value:b.last!.value,unit:b.last!.unit,metric:b.last!.metric,updatedAt:b.last!.at}: {}),
+          ...(b?.resetObservedAt?{resetAt:b.resetAt??null,resetBasis:b.resetBasis??null,resetPrecision:b.resetPrecision??null,resetObservedAt:b.resetObservedAt}:{})}
         })
        for(const [id,b] of Object.entries(bindings)){
         if(list.some(p=>p.id===id))continue
@@ -179,7 +185,9 @@ function App() {
          account:'',category:def?.category||'API',mode:'live',
          metric:b.last?.metric||b.metric,unit:b.last?.unit||b.unit,
          value:b.last?.value??null,limit:null,connected:ids.includes(id),
-         webMonitored:true,source:'web',updatedAt:b.last?.at})
+         webMonitored:true,source:'web',updatedAt:b.last?.at,
+         resetAt:b.resetAt??null,resetBasis:b.resetBasis??null,
+         resetPrecision:b.resetPrecision??null,resetObservedAt:b.resetObservedAt})
        }
        return list
       })
@@ -202,10 +210,14 @@ function App() {
      const exists=list.some(x=>x.id===p.id)
      return exists?list.map(x=>x.id===p.id?
        {...x,value:point.value,limit:point.limit,unit:point.unit,metric:point.metric,
-        webMonitored:true,source:'web',updatedAt:point.at,error:''}:x):
+        webMonitored:true,source:'web',updatedAt:point.at,error:'',
+        resetAt:point.resetAt??null,resetBasis:point.resetBasis??null,
+        resetPrecision:point.resetPrecision??null,resetObservedAt:point.resetObservedAt}:x):
        [...list,{id:p.id,kind:p.kind,name:p.name,account:'',category:p.category,
         mode:'live',metric:p.metric,unit:p.unit,value:p.value,limit:point.limit,
-        connected:false,webMonitored:true,source:'web',updatedAt:point.at}]
+        connected:false,webMonitored:true,source:'web',updatedAt:point.at,
+        resetAt:point.resetAt??null,resetBasis:point.resetBasis??null,
+        resetPrecision:point.resetPrecision??null,resetObservedAt:point.resetObservedAt}]
     })
     setHistoryRevision(n=>n+1)
     setEditor(x=>x?.id===p.id?null:x)
@@ -214,7 +226,8 @@ function App() {
     const p=message.point
     setItems(items=>items.map(x=>x.id===p.id?{...x,value:p.value,limit:p.limit??x.limit,
       metric:p.metric,unit:p.unit,connected:p.source==='api'?true:x.connected,
-      source:p.source,webMonitored:p.source==='web'?true:x.webMonitored,updatedAt:p.at,error:''}:x))
+      source:p.source,webMonitored:p.source==='web'?true:x.webMonitored,updatedAt:p.at,error:'',
+      ...(p.source==='web'?{resetAt:p.resetAt??null,resetBasis:p.resetBasis??null,resetPrecision:p.resetPrecision??null,resetObservedAt:p.resetObservedAt}:{})}:x))
     setHistoryRevision(n=>n+1)
    } else {
     setItems(items=>items.map(x=>x.id===message.id?{...x,error:safeErrorText(message.reason)}:x))
@@ -222,7 +235,7 @@ function App() {
   })
  },[])
  function edit(p: Provider) {
-  setDraft({...emptyDraft,kind:p.kind,name:p.name,account:p.account || '',category:p.category,metric:p.metric,value:p.value == null ? '' : String(p.value),limit:p.limit == null ? '' : String(p.limit),unit:p.unit,reset:p.reset || '',note:p.note || '',relayUrl:p.relay?.baseUrl||'',relayMode:p.relay?.mode||'newapi-account',relayUserId:p.relay?.userId||'',relayPath:p.relay?.path||'/api/user/self',relayField:p.relay?.field||'data.balance',relayUnit:p.relay?.unit||'额度点',relayDivisor:String(p.relay?.divisor||1),alertEnabled:!!p.alertEnabled,alertPercent:String(p.alertPercent??(p.metric==='balance'?20:80))})
+  setDraft({...emptyDraft,kind:p.kind,name:p.name,account:p.account || '',category:p.category,metric:p.metric,value:p.value == null ? '' : String(p.value),limit:p.limit == null ? '' : String(p.limit),unit:p.unit,note:p.note || '',relayUrl:p.relay?.baseUrl||'',relayMode:p.relay?.mode||'newapi-account',relayUserId:p.relay?.userId||'',relayPath:p.relay?.path||'/api/user/self',relayField:p.relay?.field||'data.balance',relayUnit:p.relay?.unit||'额度点',relayDivisor:String(p.relay?.divisor||1),alertEnabled:!!p.alertEnabled,alertPercent:String(p.alertPercent??(p.metric==='balance'?20:80))})
   setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
   setEditor({type:'edit',id:p.id});setSidebar(false)
   if(desktop && ['chatgpt','deepseek'].includes(p.kind) && !p.webMonitored && !p.connected){
@@ -231,12 +244,23 @@ function App() {
   }
  }
  function add() {
-  const first = definitions.find(def => def.kind === 'relay')
-  const info = first || definitions[0]
-  setDraft({ ...emptyDraft, kind: first?.kind || 'custom', name:first?.name || '', category:info.category,metric:info.metric,unit:info.unit })
-  setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);setAddDifferentAccount(false);
-  setEditor({type:'new',id:'qh-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)});setSidebar(false)
+  setLibraryOpen(true);setSidebar(false);setEditor(null);setStatusOpen(false);
  }
+ function chooseProvider(kind:ProviderKind){
+  const info=definitions.find(x=>x.kind===kind)
+  if(!info)return
+  const id='qh-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)
+  setDraft({...emptyDraft,kind,name:info.name,category:info.category,metric:info.metric,unit:info.unit})
+  setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
+  setAddDifferentAccount(false);setLibraryOpen(false)
+  setEditor({type:'new',id})
+  const existing=items.find(x=>x.kind===kind&&(x.webMonitored||x.connected))
+  if(desktop && ['chatgpt','deepseek'].includes(kind) && !existing){
+   setWebStatus('正在打开已授权官方额度页；如未登录，首次登录后自动尝试关联。')
+   void window.quotaBridge?.webOpen?.(kind,id).catch(e=>setWebStatus('打开页面失败：'+safeErrorText(e)))
+  }
+ }
+
  function selectKind(kind: ProviderKind) {
   setAddDifferentAccount(false)
   const info = definitions.find(x=>x.kind===kind)
@@ -340,7 +364,7 @@ function App() {
    let live: LiveResult | null = null
    const relay:RelayConfig|undefined=draft.kind==='relay'?{baseUrl:draft.relayUrl.trim(),mode:draft.relayMode,userId:draft.relayUserId.trim(),path:draft.relayPath.trim(),field:draft.relayField.trim(),unit:draft.relayUnit.trim(),divisor:Number(draft.relayDivisor||1)}:undefined
    if (secret.trim() && window.quotaBridge && liveCapable) live = await window.quotaBridge.connect(draft.kind as 'deepseek' | 'openai-api' | 'openrouter' | 'relay', id, secret.trim(),relay)
-   let webResult:{id:string;kind:ProviderKind;value:number;limit:number|null;unit:string;metric:Metric;at:string;source:'web'}|null=null
+   let webResult:{id:string;kind:ProviderKind;value:number;limit:number|null;unit:string;metric:Metric;at:string;source:'web';resetAt?:string|null;resetBasis?:'explicit'|'countdown'|null;resetPrecision?:'date'|'minute'|null;resetObservedAt?:string}|null=null
    if(selectedWeb && window.quotaBridge?.webBind){
     const candidate=webCandidates.find(c=>c.signature===selectedWeb)
     if(!candidate)throw new Error('请选择需要跟踪的网页指标')
@@ -352,7 +376,11 @@ function App() {
     metric:webResult?.metric || live?.metric || (observed?old?.metric:draft.metric),
     unit:webResult?.unit || live?.unit || (observed?old?.unit:draft.unit),
     value:webResult?.value ?? live?.value ?? (observed?old?.value??null:value),limit:webResult?.limit ?? limit,
-    reset:draft.reset || undefined,note:draft.note.trim(),connected:!!live || !!old?.connected,
+    reset:old?.reset,note:draft.note.trim(),connected:!!live || !!old?.connected,
+    resetAt:webResult?webResult.resetAt??null:old?.resetAt,
+    resetBasis:webResult?webResult.resetBasis??null:old?.resetBasis,
+    resetPrecision:webResult?webResult.resetPrecision??null:old?.resetPrecision,
+    resetObservedAt:webResult?.resetObservedAt||old?.resetObservedAt,
     webMonitored:!!webResult||!!old?.webMonitored,source:webResult?'web':live?'api':old?.source||'manual',
     updatedAt:webResult?.at||live?.updatedAt || (observed||old?.value===value?old?.updatedAt:value !== null ? new Date().toISOString() : old?.updatedAt),
     daily:live?.daily || old?.daily,bonus:live?.bonus ?? old?.bonus,error:live||webResult?'':old?.error?safeErrorText(old.error):'',alertEnabled:draft.alertEnabled,alertPercent:Number(draft.alertPercent),relay:relay||old?.relay
@@ -456,7 +484,7 @@ function App() {
       </div><div className="side-panel"><div className="panel-title"><div><span className="section-kicker">快速操作</span><h3>常用操作</h3></div></div>
        <button className="quick-action" onClick={add}><span className="quick-icon red"><Plus size={22}/></span><span><strong>绑定 AI 平台账号</strong><small>新增订阅或 API 账户</small></span><ArrowRight size={18}/></button>
        <button className="quick-action" onClick={()=>switchSection('insights')}><span className="quick-icon blue"><TrendingUp size={21}/></span><span><strong>查看额度趋势</strong><small>监控使用量与预算占比</small></span><ArrowRight size={18}/></button>
-       <div className="next-reset"><Clock3 size={17}/>{nextReset?'最近重置 · '+nextReset.name+' · '+nextReset.reset:'设置重置日期后，将在此显示提醒'}</div>
+       <div className="next-reset"><Clock3 size={17}/>{nextReset?'订阅 · '+nextReset.name+' · '+quotaResetLabel(nextReset,now):'订阅额度恢复时间由官网自动读取；官方未提供时不会推算'}</div>
       </div></section>
     </>}
     {section==='providers' && <>
@@ -483,6 +511,7 @@ function App() {
    </main>
    <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.4</span><span>本地优先 · 安全管理</span></footer>
   </div>
+  {libraryOpen && <PlatformLibrary onClose={()=>setLibraryOpen(false)} onProvider={chooseProvider} onOfficial={goTo}/>}
   <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}
    knownProviders={items.filter(p=>p.connected||p.webMonitored).map(p=>({id:p.id,name:p.name,account:p.account}))}/>
   {detailTarget && <div className="detail-shade" onMouseDown={e=>{if(e.target===e.currentTarget)setDetailTarget(null)}}>
@@ -499,6 +528,7 @@ function App() {
        <div><span>同步状态</span><strong>{syncHealth(detailProvider,now)==='healthy'?'同步正常':syncHealth(detailProvider,now)==='delayed'?'数据已过期':syncHealth(detailProvider,now)==='error'?'采样异常':syncHealth(detailProvider,now)==='pending'?'等待首次同步':'本地手动记录'}</strong></div>
        <div><span>最近成功采样</span><strong>{detailProvider.updatedAt?new Date(detailProvider.updatedAt).toLocaleString('zh-CN'):'尚无有效记录'}</strong></div>
        <div><span>额度预警</span><strong>{detailProvider.alertEnabled?(quotaAlert(detailProvider,now)?'已达到阈值':(detailProvider.limit!=null?'已开启':'已开启 · 待设置上限')):'未开启'}</strong></div>
+       {detailProvider.category==='订阅' && <div><span>订阅额度恢复</span><strong>{quotaResetLabel(detailProvider,now)}</strong></div>}
       </div>
       {syncDiagnostic(detailProvider,now) && <div className="detail-diagnostic" role="status">{syncDiagnostic(detailProvider,now)}</div>}
       <HistoryChart key={detailProvider.id} provider={detailProvider} revision={historyRevision}/>
@@ -542,7 +572,7 @@ function App() {
       <small>每个账号独立判断；仅在最近五分钟内成功同步、且设置参考上限时提示，不会基于过期或手动数据报警。</small>
       {draft.alertEnabled && !(Number(draft.limit)>0) && <small>尚未设置参考上限，额度预警暂不会触发。</small>}
      </div>
-    <div className="modal-two"><label className="field"><span>下次重置日期（可选）</span><input type="date" value={draft.reset} onChange={e=>setDraft(p=>({...p,reset:e.target.value}))}/></label><label className="field"><span>备注（可选）</span><input value={draft.note} maxLength={180} onChange={e=>setDraft(p=>({...p,note:e.target.value}))} placeholder="例如 工作账号"/></label></div>
+    <label className="field"><span>备注（可选）</span><input value={draft.note} maxLength={180} onChange={e=>setDraft(p=>({...p,note:e.target.value}))} placeholder="例如 工作账号"/></label>
     {isLiveKind(draft.kind) && <div className="key-panel"><div className="key-panel-heading"><ShieldCheck size={18}/><strong>{draft.kind==='relay'?'中转站余额查询':'官方 API 实时同步'}</strong><span>{desktop?'已支持':'桌面端 / Android'}</span></div><p>{draft.kind==='deepseek'?'输入 DeepSeek API Key，读取官方账户余额。':draft.kind==='openrouter'?'输入 OpenRouter Management Key，读取已购买额度和使用量并计算剩余额度。':draft.kind==='relay'?'请填写中转站的访问令牌或 API Key，不要输入网站登录密码。':'输入具有组织费用读取权限的 OpenAI Admin API Key，读取本月 API 消费。'} 密钥只保存在本机加密文件中。</p>{draft.kind==='relay' && <div className="relay-fields">
       <label className="field"><span>中转站地址（仅支持 HTTPS）</span><input value={draft.relayUrl} placeholder="https://your-relay.example.com" onChange={e=>setDraft(p=>({...p,relayUrl:e.target.value}))}/></label>
       <div className="modal-two"><label className="field"><span>余额接口类型</span><ReadableSelect ariaLabel="余额接口类型" value={draft.relayMode}

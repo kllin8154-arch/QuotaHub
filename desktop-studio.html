@@ -564,6 +564,8 @@ body.runtime .widget.settings-open .widget-resize-grip{display:none}
 .widget .w-row[role="button"]:active{background:#ffffff1d}
 .widget .w-row[role="button"]:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
 .widget.clear .w-row[role="button"]:hover{background:#1b36501a}
+.widget .row-reset{margin-top:4px;font-size:10px;line-height:1.35;color:#a5dcc8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.widget.clear .row-reset{color:#386f60}
 @media(prefers-reduced-motion:reduce){.widget .w-row[role="button"],.widget .w-foot button{transition:none}}
 </style></head>
 <body>
@@ -875,6 +877,19 @@ function renderNativeAccounts(all) {
    health==='error'?'采集异常':health==='delayed'?'数据过期':health==='pending'?'等待首次同步':
    health==='healthy'?'同步正常':p.value===null?'未配置':'手动记录');
   block.append(name,note);
+  if(p.category==='订阅'||['chatgpt','claude','cursor','gemini'].includes(p.kind)){
+   const info=document.createElement('div');info.className='row-reset';
+   const target=Date.parse(p.resetAt||'');
+   const observed=Date.parse(p.resetObservedAt||'');
+   if(Number.isFinite(target)&&target>Date.now()&&Number.isFinite(observed)){
+    const date=new Date(target);
+    const label=p.resetPrecision==='date'?date.toLocaleDateString('zh-CN',{month:'2-digit',day:'2-digit'})
+      :date.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+    info.textContent=(p.resetBasis==='countdown'?'预计恢复 ':'官方恢复 ')+label+
+      (Date.now()-observed>300000||p.syncError?' · 上次识别':'');
+   }else info.textContent='恢复时间：官方暂未提供';
+   block.append(info);
+  }
   const amount=document.createElement('div');amount.className='row-value';
   const big=document.createElement('strong');
   if(typeof p.value==='number'&&Number.isFinite(p.value)){

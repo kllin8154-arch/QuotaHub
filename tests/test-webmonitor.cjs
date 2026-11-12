@@ -7,7 +7,7 @@ const Module=require('node:module')
 const EventEmitter=require('node:events')
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'quota-web-qa-'))
 const handlers=new Map()
-let visible='本周已使用\n35%\n账户余额\n¥26.80\n'
+let visible='本周已使用\n35%\n账户余额\n¥26.80\nResets in 2 hours'
 const mockSession={setPermissionRequestHandler:()=>{},on:()=>{},clearStorageData:async()=>{}}
 class FakeWindow extends EventEmitter {
  constructor(opts){super();this.opts=opts;this.destroyed=false;this.shown=false;this.url='';
@@ -47,17 +47,21 @@ async function main(){
  const chosen=initial.candidates.find(x=>x.unit==='%')
  const registered=await handlers.get('quota:webBind')(null,'chatgpt',id,chosen)
  assert.equal(registered.value,35)
+ assert(registered.resetAt && Date.parse(registered.resetAt)>Date.now(),'official reset captured automatically')
+ const firstReset=registered.resetAt
  assert.equal(updates.length,1)
  assert.equal((await handlers.get('quota:history')(null,id)).length,1)
  // The same value is deduplicated, no fake high-frequency trend points.
  await handlers.get('quota:webSample')(null,'chatgpt',id)
  assert.equal((await handlers.get('quota:history')(null,id)).length,1)
- visible='本周已使用\n48%\n账户余额\n¥26.80'
+ visible='本周已使用\n48%\n账户余额\n¥26.80\nResets in 3 hours'
  await monitor.pollAll()
  const rows=await handlers.get('quota:history')(null,id)
  assert.equal(rows.length,2)
  assert.deepEqual(rows.map(x=>x.value),[35,48])
  assert.equal(rows[1].source,'web')
+ const afterReset=(await handlers.get('quota:webBindings')())[id]
+ assert(afterReset.resetAt && Date.parse(afterReset.resetAt)>Date.parse(firstReset),'reset time independently refreshed when usage changes')
  assert(rows[1].at && Number.isFinite(Date.parse(rows[1].at)))
  const bindings=await handlers.get('quota:webBindings')()
  assert(bindings[id]?.signature===chosen.signature)
