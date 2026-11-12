@@ -169,7 +169,7 @@ const READ_SCRIPT=[
  "for(let i=0;i<lines.length&&out.length<60;i++){",
  "const s=lines[i];if(!terms.test(s)||secret.test(s))continue;",
  "out.push(s.slice(0,120));",
- "if(/(?:\d{1,3}(?:\.\d+)?\s*%|[¥￥$]\s*\d|\d[\d,.]*\s*(?:CNY|USD|元|人民币|美元))/i.test(s))continue;for(let j=1;j<=5&&i+j<lines.length;j++){const next=lines[i+j];if(secret.test(next))continue;if(/(?:5\s*[- ]?\s*(?:小时|hours?|hrs?)\s*(?:限额|额度|limit)|(?:每周|本周|weekly)\s*(?:限额|额度|limit))/i.test(next))break;if(/(?:\d{1,3}(?:\.\d+)?\s*%|[¥￥$]\s*\d|\d[\d,.]*\s*(?:CNY|USD|元|人民币|美元)|20\d{2}[-\/年.]\d{1,2}|\d+\s*(?:hours?|hrs?|minutes?|mins?|days?|小时|分钟|天))/i.test(next)){out.push(next.slice(0,100));break}if(j>1&&/^(?:充值余额|赠送余额|累计消费金额|总可用余额|每周限额)/.test(next))break}",
+ "if(/(?:\\d{1,3}(?:\\.\\d+)?\\s*%|[¥￥$]\\s*\\d|\\d[\\d,.]*\\s*(?:CNY|USD|元|人民币|美元))/i.test(s))continue;for(let j=1;j<=5&&i+j<lines.length;j++){const next=lines[i+j];if(secret.test(next))continue;if(/(?:5\\s*[- ]?\\s*(?:小时|hours?|hrs?)\\s*(?:限额|额度|limit)|(?:每周|本周|weekly)\\s*(?:限额|额度|limit))/i.test(next))break;if(/(?:\\d{1,3}(?:\\.\\d+)?\\s*%|[¥￥$]\\s*\\d|\\d[\\d,.]*\\s*(?:CNY|USD|元|人民币|美元)|20\\d{2}[-\\/年.]\\d{1,2}|\\d+\\s*(?:hours?|hrs?|minutes?|mins?|days?|小时|分钟|天))/i.test(next)){out.push(next.slice(0,100));break}if(j>1&&/^(?:充值余额|赠送余额|累计消费金额|总可用余额|每周限额)/.test(next))break}",
  "}",
  "const planLines=(document.body?.innerText||'').slice(0,6500).split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);",
  "for(let i=0;i<planLines.length;i++){const x=planLines[i];if(!/^(?:当前套餐|我的套餐|套餐等级|当前订阅|Current plan|Your plan|My plan)/i.test(x)||secret.test(x)||/(?:升级|推荐|Upgrade)/i.test(x))continue;const y=planLines[i+1]||'';if(/^(?:ChatGPT\\s+)?(?:Plus|Pro(?:\\s*(?:100|200|500|5x|10x|20x))?|(?:5|10|20)x\\s*Pro|Go|Free|Business|Enterprise|Edu)$/i.test(y)){out.push('当前套餐');out.push(y);break}if(/(?:Plus|Pro\\s*(?:100|200|500|5x|10x|20x)|Go|Free|Business|Enterprise|Edu)/i.test(x)){out.push(x);break}}",
@@ -279,7 +279,7 @@ async function read(kind,id) {
  const text=await win.webContents.executeJavaScriptInIsolatedWorld(1025,[{code:READ_SCRIPT}],false);
  if(typeof text!=='string'||!text.trim())throw Error('未识别到页面中的额度文字，请切换到官方额度页面');
  const found=kind==='deepseek' ? [...deepSeekCandidates(text),...candidates(text)] : kind==='chatgpt' ? [...chatGPTCandidates(text),...candidates(text)] : candidates(text);
- if(!found.length)throw Error('没有发现可核对的额度数值，请检查页面内容和登录状态');
+ if(!found.length)throw Error('QUOTA_PARSE_NO_VALUE: 官网页面未识别到可核对的余额或额度数值');
  const readAt=new Date().toISOString();
  const quotaWindows=kind==='chatgpt'?windowsFromVisibleText(text,Date.parse(readAt)):[];
  const planTier=kind==='chatgpt'?planTierFromVisibleText(text):null;

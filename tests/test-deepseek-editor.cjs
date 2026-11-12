@@ -1,0 +1,13 @@
+'use strict'
+const assert=require('node:assert/strict')
+const fs=require('node:fs')
+const path=require('node:path')
+const app=fs.readFileSync(path.join(__dirname,'../src/App.tsx'),'utf8')
+const css=fs.readFileSync(path.join(__dirname,'../src/refined.css'),'utf8')
+assert(app.includes("webOnlyDeepSeek") && app.includes("p.webMonitored && !p.connected"),'Official web authorization is identified independently of API key')
+assert(app.includes('已通过官方网页自动监测'),'Existing browser-bound DeepSeek account should take precedence')
+assert(app.includes('高级选项：另用 API Key 直连'),'API key is optional, not mandatory for web-bound accounts')
+assert(app.includes('(!webOnlyDeepSeek||showOptionalApiKey)'),'API key input is hidden unless explicitly requested')
+assert(app.includes('重新检测余额')&&app.includes('refreshOne(found)'),'Retry must sample the existing account, not make a new binding')
+assert(css.includes('.web-connected-note'),'Readable web-first connection status')
+console.log('DEEPSEEK_EXISTING_AUTH_WEB_FIRST_EDITOR_AND_RETRY_PASS')

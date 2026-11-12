@@ -19,6 +19,8 @@ export function syncHealth(
 // Only return whitelist messages: provider errors may contain tokens and cookie headers.
 export function safeErrorText(error: unknown): string {
   const reason = String(error instanceof Error ? error.message : error ?? '').toLowerCase()
+  if (/quota_parse_no_value|web_quota_empty|官方页面已打开，但未读到可核对的余额|没有发现可核对的额度数值/.test(reason))
+    return '官方页面已打开，但未读到可核对的余额。请刷新，若持续发生可能是页面结构变化。'
   if (/401|403|unauthori[sz]ed|forbidden|login|sign.in|session|cookie|token.expir|认证|登录|授权|会话/.test(reason))
     return '平台授权可能已失效，请在官方页面重新登录后刷新。'
   if (/429|rate.limit|too.many|限制了请求频率|频率|限流/.test(reason))

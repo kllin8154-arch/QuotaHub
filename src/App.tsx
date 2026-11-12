@@ -119,6 +119,7 @@ function App() {
  const [editor, setEditor] = useState<Editor | null>(null)
  const [draft, setDraft] = useState<Draft>(emptyDraft)
  const [secret, setSecret] = useState('')
+ const [showOptionalApiKey,setShowOptionalApiKey]=useState(false)
  const [busy, setBusy] = useState(false)
  const [refreshing, setRefreshing] = useState(false)
  const [toast, setToast] = useState('')
@@ -248,6 +249,7 @@ function App() {
   })
  },[])
  function edit(p: Provider) {
+  setShowOptionalApiKey(false)
   setDraft({...emptyDraft,kind:p.kind,name:p.name,account:p.account || '',category:p.category,metric:p.metric,value:p.value == null ? '' : String(p.value),limit:p.limit == null ? '' : String(p.limit),unit:p.unit,note:p.note || '',relayUrl:p.relay?.baseUrl||'',relayMode:p.relay?.mode||'newapi-account',relayUserId:p.relay?.userId||'',relayPath:p.relay?.path||'/api/user/self',relayField:p.relay?.field||'data.balance',relayUnit:p.relay?.unit||'额度点',relayDivisor:String(p.relay?.divisor||1),alertEnabled:!!p.alertEnabled,alertPercent:String(p.alertPercent??(p.metric==='balance'?20:80))})
   setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
   setEditor({type:'edit',id:p.id});setSidebar(false)
@@ -265,6 +267,7 @@ function App() {
   const id='qh-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)
   setDraft({...emptyDraft,kind,name:info.name,category:info.category,metric:info.metric,unit:info.unit})
   setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
+  setShowOptionalApiKey(false)
   setAddDifferentAccount(false);setLibraryOpen(false)
   setEditor({type:'new',id})
   const existing=items.find(x=>x.kind===kind&&(x.webMonitored||x.connected))
@@ -439,6 +442,7 @@ function App() {
  function switchSection(next:Section) {setSection(next);setSidebar(false);setCategory('全部');setQuery('')}
  const reusablePlatform=editor?.type==='new'&&draft.kind!=='relay'&&draft.kind!=='custom'
    ?items.find(p=>p.kind===draft.kind&&(p.connected||p.webMonitored)):undefined
+ const webOnlyDeepSeek = !!(editor?.type==='edit' && draft.kind==='deepseek' && items.some(p=>p.id===editor.id && p.webMonitored && !p.connected))
  const topCards = [...viewing].sort((a,b)=>Number(b.value!=null)-Number(a.value!=null)).slice(0,4)
  const showDetails=(p:Provider)=>{setDetailTarget(p.id);setStatusOpen(false);setEditor(null)}
  return <div className={'shell quota-refined tone-'+glassTone}>
@@ -525,7 +529,7 @@ function App() {
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.7</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.8</span><span>本地优先 · 安全管理</span></footer>
   </div>
   {libraryOpen && <PlatformLibrary onClose={()=>setLibraryOpen(false)} onProvider={chooseProvider} onOfficial={goTo}/>}
   <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}
@@ -598,7 +602,9 @@ function App() {
       {draft.alertEnabled && !(Number(draft.limit)>0) && <small>尚未设置参考上限，额度预警暂不会触发。</small>}
      </div>
     <label className="field"><span>备注（可选）</span><input value={draft.note} maxLength={180} onChange={e=>setDraft(p=>({...p,note:e.target.value}))} placeholder="例如 工作账号"/></label>
-    {isLiveKind(draft.kind) && <div className="key-panel"><div className="key-panel-heading"><ShieldCheck size={18}/><strong>{draft.kind==='relay'?'中转站余额查询':'官方 API 实时同步'}</strong><span>{desktop?'已支持':'桌面端 / Android'}</span></div><p>{draft.kind==='deepseek'?'输入 DeepSeek API Key，读取官方账户余额。':draft.kind==='openrouter'?'输入 OpenRouter Management Key，读取已购买额度和使用量并计算剩余额度。':draft.kind==='relay'?'请填写中转站的访问令牌或 API Key，不要输入网站登录密码。':'输入具有组织费用读取权限的 OpenAI Admin API Key，读取本月 API 消费。'} 密钥只保存在本机加密文件中。</p>{draft.kind==='relay' && <div className="relay-fields">
+    {webOnlyDeepSeek && <div className="web-connected-note"><ShieldCheck size={17}/><div><strong>已通过官方网页自动监测</strong><p>无需输入 API Key。刷新会读取你已登录的官网余额，不改变现有会话与历史记录。</p>
+      <button type="button" onClick={()=>setShowOptionalApiKey(v=>!v)}>{showOptionalApiKey?'收起 API Key 高级选项':'高级选项：另用 API Key 直连'}</button></div></div>}
+    {isLiveKind(draft.kind) && (!webOnlyDeepSeek||showOptionalApiKey) && <div className="key-panel"><div className="key-panel-heading"><ShieldCheck size={18}/><strong>{draft.kind==='relay'?'中转站余额查询':'官方 API 实时同步'}</strong><span>{desktop?'已支持':'桌面端 / Android'}</span></div><p>{draft.kind==='deepseek'?'输入 DeepSeek API Key，读取官方账户余额。':draft.kind==='openrouter'?'输入 OpenRouter Management Key，读取已购买额度和使用量并计算剩余额度。':draft.kind==='relay'?'请填写中转站的访问令牌或 API Key，不要输入网站登录密码。':'输入具有组织费用读取权限的 OpenAI Admin API Key，读取本月 API 消费。'} 密钥只保存在本机加密文件中。</p>{draft.kind==='relay' && <div className="relay-fields">
       <label className="field"><span>中转站地址（仅支持 HTTPS）</span><input value={draft.relayUrl} placeholder="https://your-relay.example.com" onChange={e=>setDraft(p=>({...p,relayUrl:e.target.value}))}/></label>
       <div className="modal-two"><label className="field"><span>余额接口类型</span><ReadableSelect ariaLabel="余额接口类型" value={draft.relayMode}
  options={[{value:'newapi-account',label:'New API / One API 账户余额'},{value:'newapi-key',label:'New API 密钥自身额度'},{value:'custom',label:'自定义 JSON 余额接口'}]}
@@ -619,6 +625,8 @@ function App() {
       '在隔离浏览器登录平台官网后，可选择需要追踪的可见额度。登录会话保存在本机。'}</p>
      <div className="web-quota-actions">
       <button type="button" disabled={!desktop||webBusy} onClick={()=>void openWebUsage()}><ExternalLink size={16}/>打开官方额度页</button>
+      {editor.type==='edit' && items.some(p=>p.id===editor.id && p.webMonitored) &&
+       <button type="button" disabled={!desktop||webBusy} onClick={()=>{const found=items.find(p=>p.id===editor.id);if(found)void refreshOne(found)}}><RefreshCcw size={16}/>重新检测余额</button>}
       {!['chatgpt','deepseek'].includes(draft.kind) &&
        <button type="button" disabled={!desktop||webBusy} onClick={()=>void readWebUsage()}><RefreshCcw size={16}/>读取页面额度</button>}
       {editor.type==='edit' && items.find(x=>x.id===editor.id)?.webMonitored &&

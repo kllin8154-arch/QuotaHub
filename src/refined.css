@@ -405,3 +405,12 @@
 .quota-refined .detail-quota-window small,.quota-refined .detail-quota-windows p{font-size:11px;line-height:1.5;color:var(--qh-muted)}
 .quota-refined .provider-card{min-height:330px}
 @media(max-width:560px){.quota-refined .quota-window{flex-wrap:wrap;gap:2px}.quota-refined .quota-window span:last-child{text-align:left;flex:1 1 100%}}
+
+/* v0.13.8: official webpage session is the default for linked DeepSeek accounts. */
+.quota-refined .web-connected-note{display:flex;align-items:flex-start;gap:11px;padding:13px 15px;border:1px solid var(--qh-panel-edge);border-radius:12px;background:var(--qh-surface);margin:13px 0;color:var(--qh-text)}
+.quota-refined .web-connected-note>svg{flex:none;color:var(--qh-accent);margin-top:2px}
+.quota-refined .web-connected-note>div{min-width:0}
+.quota-refined .web-connected-note strong{font-size:12px}
+.quota-refined .web-connected-note p{color:var(--qh-muted);font-size:11px;line-height:1.55;margin:6px 0}
+.quota-refined .web-connected-note button{padding:7px 0;color:var(--qh-muted);font-size:11px;text-decoration:underline;text-underline-offset:3px}
+.quota-refined .web-connected-note button:hover{color:var(--qh-text)}

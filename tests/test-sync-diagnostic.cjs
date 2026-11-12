@@ -14,6 +14,8 @@ assert.match(syncDiagnostic({ ...sample, updatedAt: '2026-11-12T02:45:00Z' }, no
 assert.match(syncDiagnostic({ ...sample, updatedAt: undefined }, now), /尚无有效/);
 for (const [raw, expected] of [
   ['401 session cookie=secret-authorization-token', /授权可能已失效/],
+  ['QUOTA_PARSE_NO_VALUE: 官网页面未识别到可核对的余额或额度数值', /官方页面已打开/],
+  ['没有发现可核对的额度数值，请检查页面内容和登录状态', /官方页面已打开/],
   ['429 rate limit token=secret', /请求频率/],
   ['network timeout token=secret', /网络连接/],
   ['selector mismatch token=secret', /页面可能已调整/],
