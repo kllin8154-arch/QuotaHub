@@ -9,6 +9,7 @@ const { createGoogleIdentity } = require('./googleIdentity.cjs');
 const { createAccountLinks } = require('./accountLinks.cjs');
 const { createRefreshCoordinator } = require('./refreshCoordinator.cjs');
 const { createRetryGate } = require('./retryGate.cjs');
+const { createQuitController } = require('./quitControl.cjs');
 const { createAgentDiscoveryService } = require('./agentDiscoveryService.cjs');
 let discoveryService=null;
 ipcMain.handle('agents:discover',()=>discoveryService?.discover()||[]);
@@ -573,7 +574,7 @@ function widgetMenu(){
   {label:'恢复默认位置',click:()=>resetWidgetPosition()},
   {type:'separator'},
   {label:'打开额度管理',click:()=>createWindow()},
-  {label:'退出组件',click:()=>app.quit()}
+  {label:'退出 Agnovexa One',click:()=>{void requestExit()}}
  ]);
 }
 function createWidget(){
@@ -623,7 +624,14 @@ function createWidget(){
 }
 
 let tray=null;
-let allowQuit=false;
+let lastTrayMenu=null;
+let explicitlyExiting=false;
+const {requestExit}=createQuitController({
+ app,flush:()=>webQuota.flushPersistentSessions(),shutdown:()=>webQuota.shutdown(),
+ cancel:()=>googleIdentity?.cancel(),windows:()=>BrowserWindow.getAllWindows(),
+ destroyTray:()=>{if(tray&&!tray.isDestroyed())tray.destroy();tray=null},
+ onBegin:()=>{explicitlyExiting=true}
+});
 
 let widgetRaiseTimer=null;
 function hideWidgetToTray(){
@@ -688,15 +696,10 @@ function updateTrayMenu() {
     click:item=>{widgetSettings.showTaskbar=item.checked;saveWidgetSettings();if(gadget&&!gadget.isDestroyed())gadget.setSkipTaskbar(!widgetSettings.showTaskbar);updateTrayMenu();}},
   {type:'separator'},
   {label:'打开额度管理',click:()=>createWindow()},
-  {label:'重新启动 Agnovexa One',click:()=>{
-    // app.exit() skips before-quit and the browser's normal session teardown.
-    webQuota.flushPersistentSessions();
-    app.relaunch();
-    allowQuit=true;
-    app.quit();
-  }},
-  {label:'彻底退出',click:()=>{allowQuit=true;app.quit()}}
+  {label:'重新启动 Agnovexa One',click:()=>{void requestExit({restart:true})}},
+  {label:'退出 Agnovexa One',click:()=>{void requestExit()}}
  ]);
+ lastTrayMenu=menu;
  tray.setContextMenu(menu);
 }
 function setupTray(){
@@ -731,10 +734,14 @@ ipcMain.handle('widget:dashboard',(_event,id)=>{
 });
 app.on('second-instance',(_event,argv)=>{
  if(!primaryInstance)return;
+ if(argv.includes('--quit-existing')){void requestExit();return}
  if(argv.includes('--dashboard'))createWindow();
  else ensureWidgetVisible();
 });
 if(primaryInstance)app.whenReady().then(()=>{
+ // The requester can win the instance lock if the old process exits first.
+ // In that race, never start a fresh window just because this was a late quit request.
+ if(process.argv.includes('--quit-existing')){void requestExit();return}
  discoveryService=createAgentDiscoveryService({dataDir,dialog});
  // Chromium's network stack follows the Windows proxy and certificate settings.
  // Use a non-persistent, cookie-isolated session only for Google OAuth token/userinfo.
@@ -755,6 +762,19 @@ if(primaryInstance)app.whenReady().then(()=>{
  setInterval(()=>void refreshConnectedApiAccounts(),90000).unref?.();
  setupTray();
  if(process.argv.includes('--dashboard'))createWindow();else createWidget();
+ // QA-only: invoke the exact native menu callback in an isolated D: test profile.
+ // This never runs with the real production user-data directory.
+ const qaRoot=process.env.AIQUOTA_DATA_DIR||'';
+ if(process.env.AIQUOTA_QUIT_QA==='1' &&
+   /[\\/]\.qa[\\/]/i.test(qaRoot) &&
+   (process.argv.includes('--qa-tray-exit')||process.argv.includes('--qa-widget-exit'))){
+  setTimeout(()=>{
+   const menu=process.argv.includes('--qa-widget-exit')?widgetMenu():lastTrayMenu;
+   const item=menu?.items.find(x=>x.label==='退出 Agnovexa One');
+   if(typeof item?.click==='function')item.click();
+   else app.exit(19);
+  },1300).unref?.();
+ }
  app.on('activate',()=>{if(!BrowserWindow.getAllWindows().length){
   if(process.argv.includes('--dashboard'))createWindow();else createWidget();
  }});
@@ -766,4 +786,4 @@ app.on('before-quit',()=>{
  webQuota.flushPersistentSessions();
  webQuota.shutdown();
 });
-app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});
+app.on('window-all-closed',()=>{if(!explicitlyExiting&&process.platform!=='darwin')app.quit();});

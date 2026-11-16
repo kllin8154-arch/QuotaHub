@@ -397,12 +397,17 @@ async function pollAll() {
  finally{pollInFlight=null}
 }
 function flushPersistentSessions(){
+  const pending=[];
   for(const win of windows.values()){
     if(win.isDestroyed())continue;
-    try{win.webContents.session.flushStorageData()}catch(error){
-      console.warn('QuotaHub session flush:',String(error.message||error).slice(0,120));
-    }
+    try{
+      const task=win.webContents.session.flushStorageData();
+      if(task&&typeof task.then==='function')pending.push(task.catch(()=>{}));
+    }catch{/* Chromium may already be closing this session. */}
   }
+  // Explicit user exit awaits the storage flush, with a bounded timeout.
+  // Periodic flush and ordinary app shutdown can safely ignore this promise.
+  return Promise.allSettled(pending);
 }
 function sessionStatus(){
  return Array.from(windows.entries()).map(([key,win])=>({
