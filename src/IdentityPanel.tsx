@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, CircleHelp, ExternalLink, LoaderCircle, LockKeyhole, Settings2, ShieldCheck, X } from 'lucide-react'
 import type { GoogleIdentityState, PlatformLinksStatus } from './types'
+import GoogleAvatar from './GoogleAvatar'
 
 const googleHelp='https://console.cloud.google.com/auth/clients'
 const localState:GoogleIdentityState={configured:false,clientSecretConfigured:false,secureStorage:false,busy:false,profile:null}
@@ -95,7 +96,7 @@ export default function IdentityPanel({open,onClose,knownProviders=[]}:{open:boo
       <Check size={17} className="identity-check"/>
      </div>
      {state.profile ? <div className="identity-profile">
-      <div className="identity-profile-top"><img src="./google-mark.svg" alt="" width="28" height="28"/><span>Google 身份已关联到此设备</span></div>
+      <div className="identity-profile-top"><GoogleAvatar profile={state.profile}/><span>Google 身份已关联到此设备</span></div>
       <h3>{state.profile.name}</h3>
       <p className="identity-email">{state.profile.email}</p>
       <div className="identity-verified"><ShieldCheck size={15}/> 由 Google 验证 · 身份信息本机加密保存</div>

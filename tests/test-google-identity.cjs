@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
-const {createGoogleIdentity,challengeFor,validClientId,SCOPES}=require('../electron/googleIdentity.cjs');
+const {createGoogleIdentity,challengeFor,validClientId,verifiedGooglePicture,SCOPES}=require('../electron/googleIdentity.cjs');
 
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'quotahub-google-qa-'));
 const clientId='123456789012-syntheticqaonlydesktopclient.apps.googleusercontent.com';
@@ -32,7 +32,7 @@ async function mockFetch(url,init){
  if(url==='https://openidconnect.googleapis.com/v1/userinfo'){
   assert(init.headers.Authorization.includes('synthetic-only'));
   return {ok:true,headers:{get:()=>null},json:async()=>({
-   sub:'9876543210',email:'synthetic.user@example.test',email_verified:true,name:'QuotaHub Test User'
+   sub:'9876543210',email:'synthetic.user@example.test',email_verified:true,name:'QuotaHub Test User',picture:'https://lh3.googleusercontent.com/a/synthetic-portrait'
   })};
  }
  throw Error('Unexpected request: '+url);
@@ -78,6 +78,10 @@ async function test(){
  assert.equal(result.profile.name,'QuotaHub Test User');
  assert.equal(result.profile.email,'synthetic.user@example.test');
  assert.equal(result.profile.emailVerified,true);
+ assert.equal(result.profile.picture,'https://lh3.googleusercontent.com/a/synthetic-portrait');
+ assert.equal(verifiedGooglePicture('http://lh3.googleusercontent.com/a/x'),null);
+ assert.equal(verifiedGooglePicture('https://googleusercontent.com.evil.test/a'),null);
+ assert.equal(verifiedGooglePicture('https://lh3.googleusercontent.com/a/pic'),'https://lh3.googleusercontent.com/a/pic');
  assert.equal(fetched.length,2);
  assert(!fs.existsSync(path.join(dir,'google-oauth-client.json.tmp')));
  const ciphertext=fs.readFileSync(path.join(dir,'google-identity.enc'),'utf8');
@@ -87,6 +91,7 @@ async function test(){
  // A full app restart recreates the module using the same encrypted local data.
  const restored=createGoogleIdentity({dataDir:dir,safeStorage,shell,fetchImpl:mockFetch});
  assert.equal(restored.status().profile.email,'synthetic.user@example.test');
+ assert.equal(restored.status().profile.picture,'https://lh3.googleusercontent.com/a/synthetic-portrait');
  assert.equal(restored.status().configured,true);
  restored.signOut();
  assert.equal(restored.status().profile,null);

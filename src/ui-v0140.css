@@ -1,0 +1,48 @@
+/* v0.14.0: identity and controls. Last-loaded overrides share UI theme tokens. */
+.quota-refined{--qh-btn-bg:#314154;--qh-btn-hover:#405268;--qh-btn-border:#546a80;--qh-btn-fg:#edf3f9}
+.quota-refined.tone-warm{--qh-btn-bg:#53484f;--qh-btn-hover:#61535b;--qh-btn-border:#806d75;--qh-btn-fg:#f5eef0}
+.quota-refined.tone-clear{--qh-btn-bg:#fff;--qh-btn-hover:#e9f1f8;--qh-btn-border:#b8c9d9;--qh-btn-fg:#253950}
+.quota-refined .sidebar-bottom.identity-sidebar-slot{display:block;margin-top:auto;padding:14px 0 0;border-top:1px solid var(--qh-line)}
+.quota-refined .sidebar-identity-trigger{display:flex;align-items:center;gap:11px;width:100%;min-width:0;padding:11px 10px;border-radius:13px;border:1px solid var(--qh-btn-border);color:var(--qh-text);background:var(--qh-surface);text-align:left;box-shadow:none;transition:background .18s,border-color .18s,transform .18s}
+.quota-refined .sidebar-identity-trigger:hover{background:var(--qh-btn-hover);border-color:var(--qh-accent)}
+.quota-refined .sidebar-identity-trigger:active{transform:translateY(1px)}
+.quota-refined .sidebar-identity-trigger:focus-visible{outline:2px solid var(--qh-accent);outline-offset:2px}
+.quota-refined .sidebar-identity-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.quota-refined .sidebar-identity-copy strong{font-size:12px;font-weight:720;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quota-refined .sidebar-identity-copy small{font-size:10px;color:var(--qh-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.quota-refined .sidebar-identity-chevron{flex:none;color:var(--qh-muted)}
+.google-avatar{position:relative;display:grid;place-items:center;flex:none;width:38px;height:38px;background:linear-gradient(145deg,#b5d6c5,#40836e);border:1px solid #8cbaa6;color:#173c31;border-radius:50%;overflow:hidden}
+.google-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.google-avatar.is-local{background:var(--qh-over);color:var(--qh-text);border-color:var(--qh-panel-edge)}
+.google-avatar-initial{font-weight:770;font-size:16px}
+.identity-profile-top .google-avatar{width:38px;height:38px}
+.quota-refined.tone-clear .sidebar-identity-trigger{background:#fff}
+.quota-refined.tone-clear .sidebar-identity-trigger:hover{background:var(--qh-btn-hover)}
+.quota-refined .refined-actions .outline-button,.quota-refined .section-tools .text-button,.quota-refined .toolbar-right .primary-button,.quota-refined .refined-actions .primary-button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:41px;height:41px;padding:0 15px;border-radius:10px;font-size:12px;font-weight:690;white-space:nowrap;margin:0;transition:background .16s,border-color .16s,box-shadow .16s,transform .16s}
+.quota-refined .refined-actions .outline-button,.quota-refined .section-tools .text-button{background:var(--qh-btn-bg);color:var(--qh-btn-fg);border:1px solid var(--qh-btn-border);box-shadow:0 2px 8px #0a172118}
+.quota-refined .refined-actions .outline-button:hover,.quota-refined .section-tools .text-button:hover{background:var(--qh-btn-hover);border-color:var(--qh-accent);box-shadow:0 5px 12px #0a17211c;transform:translateY(-1px)}
+.quota-refined .refined-actions .primary-button,.quota-refined .toolbar-right .primary-button{color:#fff;border:1px solid #d78086;background:linear-gradient(145deg,#de858b,#c16b74);box-shadow:0 3px 10px #381b222a}
+.quota-refined .refined-actions .primary-button:hover,.quota-refined .toolbar-right .primary-button:hover{background:linear-gradient(145deg,#eb9598,#cd7981);box-shadow:0 5px 16px #381b2240}
+.quota-refined .refined-actions button:active,.quota-refined .section-tools button:active,.quota-refined .toolbar-right .primary-button:active{transform:translateY(1px);box-shadow:none}
+.quota-refined .refined-actions button:focus-visible,.quota-refined .section-tools button:focus-visible,.quota-refined .toolbar-right .primary-button:focus-visible{outline:2px solid var(--qh-accent);outline-offset:3px}
+.quota-refined .refined-actions button:disabled,.quota-refined .section-tools button:disabled{opacity:.48;cursor:wait;transform:none;box-shadow:none}
+.quota-refined .search{height:41px;background:var(--qh-btn-bg);border:1px solid var(--qh-btn-border);color:var(--qh-btn-fg)}
+.quota-refined .search input{color:var(--qh-btn-fg)}
+.quota-refined .search:focus-within{border-color:var(--qh-accent);box-shadow:0 0 0 2px #c9787c28}
+.quota-refined .status-popover{max-height:min(350px,calc(100vh - 95px));overflow-y:auto}
+.quota-refined .status-trigger[aria-expanded="true"]{border-color:var(--qh-accent)}
+/* Dark edit modal needs its own true dark surfaces even under the clear page theme. */
+.quota-refined .modal-backdrop .web-connected-note{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;margin:16px 0;border-radius:13px;background:linear-gradient(145deg,#293b4c,#233243);border:1px solid #50677d;color:#f0f5fa;box-shadow:none}
+.quota-refined .modal-backdrop .web-connected-note>svg{color:#8ccdb2;margin-top:2px}
+.quota-refined .modal-backdrop .web-connected-note strong{font-size:13px;color:#f1f5fa}
+.quota-refined .modal-backdrop .web-connected-note p{color:#bdccdb;font-size:12px;margin:5px 0 8px;line-height:1.65}
+.quota-refined .modal-backdrop .web-connected-note button{display:inline-flex;align-items:center;min-height:32px;padding:6px 12px;border-radius:8px;border:1px solid #60758d;color:#e1eaf5;background:#36495d;text-decoration:none;font-size:11px;font-weight:640;transition:background .17s,border-color .17s}
+.quota-refined .modal-backdrop .web-connected-note button:hover{color:#fff;background:#425b74;border-color:#a3b7c8}
+.quota-refined .modal-backdrop .web-connected-note button:focus-visible{outline:2px solid #e9969a;outline-offset:2px}
+.quota-refined .modal-backdrop .web-quota-panel .setting-tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;background:#344c61;border:1px solid #5b748a;color:#d4e4f1;border-radius:7px;font-size:10px;line-height:1;font-weight:670}
+.quota-refined .modal-backdrop .web-quota-actions button{min-height:40px;border-radius:9px;background:#31465b;border:1px solid #68849b;color:#f0f5fc;transition:background .17s,border-color .17s,transform .17s}
+.quota-refined .modal-backdrop .web-quota-actions button:hover{background:#3f5972;border-color:#b1c9dc}
+.quota-refined .modal-backdrop .web-quota-actions button:active{transform:translateY(1px)}
+.quota-refined .modal-backdrop .web-quota-actions button:focus-visible{outline:2px solid #eea4a8;outline-offset:2px}
+@media(max-width:740px){.quota-refined .sidebar-bottom.identity-sidebar-slot{margin-top:auto}.quota-refined .refined-actions .outline-button,.quota-refined .refined-actions .primary-button{min-width:0}.quota-refined .section-tools{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.quota-refined .sidebar-identity-trigger,.quota-refined .web-connected-note button{transition:none}}

@@ -9,6 +9,16 @@ const CLIENT_PATTERN=/^[0-9]{5,}-[a-z0-9_-]{12,}\.apps\.googleusercontent\.com$/
 const GOOGLE_AUTH='https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN='https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO='https://openidconnect.googleapis.com/v1/userinfo';
+// Only Google-hosted, HTTPS profile pictures may appear in the app.
+function verifiedGooglePicture(value){
+ if(typeof value!=='string'||value.length>2048)return null;
+ try{
+  const url=new URL(value);
+  if(url.protocol!=='https:'||url.username||url.password||url.port)return null;
+  if(url.hostname!=='googleusercontent.com'&&!url.hostname.endsWith('.googleusercontent.com'))return null;
+  return url.href;
+ }catch{return null}
+}
 const MAX_WAIT_MS=180000;
 function validClientId(id){return typeof id==='string'&&id.length<=256&&CLIENT_PATTERN.test(id.trim())}
 function randomBase64Url(size=32){return crypto.randomBytes(size).toString('base64url')}
@@ -57,7 +67,7 @@ function createGoogleIdentity(options){
   return {configured:!!config.clientId,clientSecretConfigured:!!config.clientSecret,
           secureStorage:isStorageReady(),busy:!!pending,
           profile:identity?{provider:'google',name:identity.name,email:identity.email,
-            emailVerified:true,linkedAt:identity.linkedAt,persisted:!!identity.persisted}:null};
+            emailVerified:true,linkedAt:identity.linkedAt,persisted:!!identity.persisted,picture:verifiedGooglePicture(identity.picture)}:null};
  }
  function persist(profile){
   if(!isStorageReady())throw Error('无法使用系统加密存储身份信息，请继续使用本地模式');
@@ -141,7 +151,7 @@ function createGoogleIdentity(options){
   if(typeof user.sub!=='string'||!user.sub||user.sub.length>127||typeof user.email!=='string'||
      user.email.length>254||user.email_verified!==true)throw Error('Google 未返回已验证的账号身份');
   return {provider:'google',sub:user.sub,name:String(user.name||user.email.split('@')[0]).slice(0,90),
-          email:user.email,emailVerified:true,linkedAt:now()};
+          email:user.email,emailVerified:true,linkedAt:now(),picture:verifiedGooglePicture(user.picture)};
  }
  function finish(p){
   if(pending===p)pending=null;
@@ -225,4 +235,4 @@ function createGoogleIdentity(options){
  }
  return {status,configure,importClientJSONFile,signIn,signOut,cancel,getClientId,getSubject:()=>identity?.sub||null};
 }
-module.exports={createGoogleIdentity,validClientId,challengeFor,SCOPES};
+module.exports={createGoogleIdentity,validClientId,challengeFor,verifiedGooglePicture,SCOPES};

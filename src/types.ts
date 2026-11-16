@@ -1,6 +1,6 @@
 import type { ServiceType } from './serviceTypes'
 export type GoogleIdentityState = {configured:boolean;clientSecretConfigured?:boolean;secureStorage:boolean;busy:boolean;
-  profile:{provider:'google';name:string;email:string;emailVerified:true;linkedAt:string;persisted:boolean}|null}
+  profile:{provider:'google';name:string;email:string;emailVerified:true;linkedAt:string;persisted:boolean;picture?:string|null}|null}
 export type PlatformLinksStatus = {verified:boolean;linked:string[];unlinked:string[];linkedCount:number;availableCount:number;conflictCount:number}
 export type ProviderKind = 'deepseek' | 'openai-api' | 'openrouter' | 'chatgpt' | 'claude' | 'gemini' | 'siliconflow' | 'qwen' | 'kimi' | 'zhipu' | 'cursor' | 'custom' | 'relay'
 export type Metric = 'balance' | 'usage' | 'spend'

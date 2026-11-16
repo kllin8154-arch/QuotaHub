@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Activity, ArrowRight, ArrowUpRight, Bell, Check, ChevronRight, CircleHelp, Clock3, Cloud, CreditCard, Download, ExternalLink, Gauge, LayoutDashboard, Menu, MoreHorizontal, Plus, RefreshCcw, Search, Settings2, ShieldCheck, TrendingUp, Wallet, Wifi, X, Zap } from 'lucide-react'
 import type { Provider, ProviderKind, LiveResult, Metric } from './types'
 import { definitions } from './catalog'
@@ -10,6 +10,7 @@ import { quotaAlert } from './quotaAlert'
 import { quotaResetLabel } from './resetDisplay'
 import { activeWindows,windowRemaining,windowPercent,windowShortName,visiblePlan } from './usageWindowsDisplay'
 import IdentityPanel from './IdentityPanel'
+import GoogleAvatar from './GoogleAvatar'
 import PlatformLibrary from './PlatformLibrary'
 import { defaultServiceType, isServiceType, serviceTypeLabel, serviceTypeOptions, type ServiceType } from './serviceTypes'
 import type { WebQuotaCandidate, GoogleIdentityState } from './types'
@@ -128,6 +129,7 @@ function App() {
  const [historyRevision,setHistoryRevision] = useState(0)
  const [identityOpen,setIdentityOpen]=useState(false)
  const [statusOpen,setStatusOpen]=useState(false)
+ const statusAnchorRef=useRef<HTMLDivElement|null>(null)
  const [detailTarget,setDetailTarget]=useState<string|null>(()=>new URLSearchParams(window.location.search).get('detail'))
  const [libraryOpen,setLibraryOpen]=useState(false)
  const [addDifferentAccount,setAddDifferentAccount]=useState(false)
@@ -208,6 +210,16 @@ function App() {
     .finally(()=>setAccountSyncReady(true))
  },[])
  useEffect(() => { localStorage.setItem('aiquotahub.ui.tone',glassTone) },[glassTone])
+ useEffect(()=>{
+  if(!statusOpen)return
+  const outside=(event:PointerEvent)=>{
+   if(!statusAnchorRef.current?.contains(event.target as Node))setStatusOpen(false)
+  }
+  const keydown=(event:KeyboardEvent)=>{if(event.key==='Escape')setStatusOpen(false)}
+  document.addEventListener('pointerdown',outside,true)
+  window.addEventListener('keydown',keydown)
+  return ()=>{document.removeEventListener('pointerdown',outside,true);window.removeEventListener('keydown',keydown)}
+ },[statusOpen])
  useEffect(()=>window.quotaBridge?.onDetailRequested?.(id=>{setDetailTarget(id||'first');setStatusOpen(false);setEditor(null)}),[])
  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 4200); return () => clearTimeout(t) }, [toast])
  useEffect(() => { const fn = (e: KeyboardEvent) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.qh-readable-options')) {setEditor(null);setDetailTarget(null);setStatusOpen(false)} }; window.addEventListener('keydown',fn); return () => window.removeEventListener('keydown',fn) }, [])
@@ -440,7 +452,7 @@ function App() {
   a.href=URL.createObjectURL(blob);a.download='AIAgnovexa One-额度记录.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
   setToast('已导出额度记录（不包含密钥）')
  }
- function switchSection(next:Section) {setSection(next);setSidebar(false);setCategory('全部');setQuery('')}
+ function switchSection(next:Section) {setStatusOpen(false);setSection(next);setSidebar(false);setCategory('全部');setQuery('')}
  const reusablePlatform=editor?.type==='new'&&draft.kind!=='relay'&&draft.kind!=='custom'
    ?items.find(p=>p.kind===draft.kind&&(p.connected||p.webMonitored)):undefined
  const webOnlyDeepSeek = !!(editor?.type==='edit' && draft.kind==='deepseek' && items.some(p=>p.id===editor.id && p.webMonitored && !p.connected))
@@ -456,7 +468,15 @@ function App() {
     <button className="side-filter" onClick={()=>{switchSection('providers');setCategory('API')}}><span className="filter-icon api"><Zap size={16}/></span><span>API 额度</span><span className="count">{items.filter(x=>x.category==='API').length}</span></button>
     <button className="side-filter" onClick={()=>{switchSection('providers');setCategory('订阅')}}><span className="filter-icon sub"><CreditCard size={16}/></span><span>订阅计划</span><span className="count">{items.filter(x=>x.category==='订阅').length}</span></button>
    </div>
-
+   <div className="sidebar-bottom identity-sidebar-slot">
+    <button type="button" className="sidebar-identity-trigger" title="查看 Google 账号与本机授权"
+     onClick={()=>{setStatusOpen(false);setIdentityOpen(true);setSidebar(false)}}>
+     <GoogleAvatar profile={googleIdentity?.profile||null}/>
+     <span className="sidebar-identity-copy"><strong>{googleIdentity?.profile?.name||'Google 身份'}</strong>
+      <small>{googleIdentity?.profile?'已连接 · 管理账号':'未连接 · 点击登录'}</small></span>
+     <ChevronRight size={16} className="sidebar-identity-chevron"/>
+    </button>
+   </div>
   </aside>
   {sidebar && <button className="mobile-shade" onClick={()=>setSidebar(false)} aria-label="关闭菜单"/>}
   <div className="page">
@@ -466,7 +486,7 @@ function App() {
       <button title="烟灰" aria-label="烟灰玻璃" className={glassTone==='smoke'?'selected':''} onClick={()=>setGlassTone('smoke')}><i className="tone-dot smoke"/></button>
       <button title="冰白" aria-label="冰白玻璃" className={glassTone==='clear'?'selected':''} onClick={()=>setGlassTone('clear')}><i className="tone-dot clear"/></button>
       <button title="暖灰" aria-label="暖灰玻璃" className={glassTone==='warm'?'selected':''} onClick={()=>setGlassTone('warm')}><i className="tone-dot warm"/></button>
-    </div><div className="status-anchor">
+    </div><div className="status-anchor" ref={statusAnchorRef}>
       <button className="topbar-mode status-trigger" aria-label="查看连接及同步状态" aria-expanded={statusOpen} onClick={()=>setStatusOpen(v=>!v)}><span className="pulse-dot"/>{isAndroid?'Android Connected':desktop?'Desktop Connected':'Web Preview'}</button>
       {statusOpen && <div className="status-popover" role="region" aria-label="运行状态详情">
        <strong>运行状态</strong>
@@ -476,10 +496,7 @@ function App() {
        <div><span>最后成功采样</span><b>{lastSuccess?new Date(lastSuccess).toLocaleString('zh-CN'):'尚无成功记录'}</b></div>
        <small>额度与授权信息仅在当前设备保存，Google 身份不等于第三方平台授权。</small>
       </div>}
-     </div><button className="icon-button top-icon" title="帮助" onClick={()=>switchSection('settings')}><CircleHelp size={20}/></button><button className="icon-button top-icon" title="查看需要关注的平台" onClick={()=>{switchSection('providers');setCategory('需关注')}}><Bell size={19}/>{warnings.length>0 && <span className="notif-dot"/>}</button><button className="identity-account-trigger" title="身份与 Google 登录" onClick={()=>setIdentityOpen(true)}>
-      {googleIdentity?.profile?<img src="./google-mark.svg" alt=""/>:<ShieldCheck size={17}/>}
-      <span>{googleIdentity?.profile?.name||'本地模式'}</span>
-     </button></div>
+     </div><button className="icon-button top-icon" title="帮助" onClick={()=>switchSection('settings')}><CircleHelp size={20}/></button><button className="icon-button top-icon" title="查看需要关注的平台" onClick={()=>{switchSection('providers');setCategory('需关注')}}><Bell size={19}/>{warnings.length>0 && <span className="notif-dot"/>}</button></div>
    </header>
    <main className="main">
     {section==='overview' && <>
@@ -530,7 +547,7 @@ function App() {
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.13.9</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.14.0</span><span>本地优先 · 安全管理</span></footer>
   </div>
   {libraryOpen && <PlatformLibrary onClose={()=>setLibraryOpen(false)} onProvider={chooseProvider} onOfficial={goTo}/>}
   <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}
