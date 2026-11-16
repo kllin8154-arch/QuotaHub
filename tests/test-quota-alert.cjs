@@ -33,4 +33,17 @@ const spend={...balance,metric:'spend',value:80,alertPercent:80};
 assert.equal(quotaAlert(spend,now),true);
 assert.equal(quotaAlert({...spend,value:79.9},now),false);
 assert.equal(quotaAlert({...spend,metric:'usage',value:90},now),true);
-console.log('QUOTA_ALERT_PER_ACCOUNT_FRESHNESS_AND_BOUNDARY_PASS');
+const percent={...balance,kind:'chatgpt',category:'订阅',unit:'%',value:19,limit:null,metric:'balance'};
+assert.equal(quotaAlert(percent,now),true,'Official remaining % needs no manually entered maximum');
+assert.equal(quotaAlert({...percent,value:21},now),false);
+assert.equal(quotaAlert({...percent,metric:'usage',value:80,alertPercent:80},now),true);
+assert.equal(quotaAlert({...percent,metric:'usage',value:79.9,alertPercent:80},now),false);
+assert.equal(quotaAlert({...percent,unit:'CNY'},now),false,'Monetary balance without limit never triggers');
+assert.equal(quotaAlert({...percent,error:'temporary network failure'},now),false,'Old data with an error is not live');
+assert.equal(quotaAlert({...percent,updatedAt:new Date(now-6*60_000).toISOString()},now),false);
+const windows=[{id:'five-hour',label:'5 小时限额',remainingPercent:0,resetAt:null,resetBasis:null,resetPrecision:null,observedAt:fresh},
+{id:'weekly',label:'每周限额',remainingPercent:84,resetAt:null,resetBasis:null,resetPrecision:null,observedAt:fresh}];
+assert.equal(quotaAlert({...percent,quotaWindows:windows},now),true,'The exhausted five-hour allowance is alertable');
+assert.equal(quotaAlert({...percent,quotaWindows:[{...windows[0],remainingPercent:30},windows[1]]},now),false,'Unrelated weekly and hourly limits never combine');
+assert.equal(quotaAlert({...percent,quotaWindows:[{...windows[0],observedAt:new Date(now-8*60_000).toISOString()}]},now),false,'Old allowance observation does not trigger');
+console.log('QUOTA_ALERT_PER_ACCOUNT_FRESHNESS_AND_NATIVE_PERCENT_WINDOWS_PASS');

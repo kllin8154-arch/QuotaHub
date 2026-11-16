@@ -6,7 +6,7 @@ import { definitions } from './catalog'
 import ReadableSelect from './ReadableSelect'
 import HistoryChart from './HistoryChart'
 import { syncHealth, lastSampleText, syncDiagnostic, safeErrorText } from './syncHealth'
-import { quotaAlert } from './quotaAlert'
+import { quotaAlert, quotaAlertDetail } from './quotaAlert'
 import { quotaResetLabel } from './resetDisplay'
 import { activeWindows,windowRemaining,windowPercent,windowShortName,visiblePlan } from './usageWindowsDisplay'
 import IdentityPanel from './IdentityPanel'
@@ -54,22 +54,32 @@ function metricText(p: Provider): string {
  return p.unit==='%' ? (p.metric==='balance'?'当前剩余使用比例':'当前已使用比例') :
    p.metric === 'balance' ? '当前可用余额' : p.metric === 'spend' ? '本月 API 费用' : '本周期已使用'
 }
+function quotaValueLabel(p:Provider,now:number):string {
+ const status=syncHealth(p,now)
+ const metric=metricText(p)
+ if(status==='healthy')return metric
+ if(status==='manual')return p.value===null?metric:'本地记录 · '+metric
+ if(status==='pending')return p.value===null?'等待首次采样':'待核实的历史值 · '+metric
+ return '上次有效记录 · '+metric
+}
 function goTo(url: string) {
  if (window.quotaBridge) void window.quotaBridge.openExternal(url)
  else window.open(url, '_blank', 'noopener,noreferrer')
 }
 function ProviderCard({ data, isDemo, onEdit, onDetails, onRefresh, now }: { data: Provider; isDemo: boolean; onEdit: (p: Provider) => void; onDetails: (p: Provider) => void; onRefresh: (p: Provider) => void; now: number }) {
  const info = definitions.find(x => x.kind === data.kind)
- const risk = quotaAlert(data,now)
- const ratio = data.value != null && data.limit != null && data.limit > 0 ? Math.min(100, Math.max(0, data.value / data.limit * 100)) : null
+ const alertReason=quotaAlertDetail(data,now)
+ const risk = !!alertReason
+ const ratio = data.value != null && (data.unit==='%' || data.limit!=null && data.limit>0)
+    ? Math.min(100,Math.max(0,data.unit==='%'?data.value:data.value/data.limit!*100)) : null
  const hasData = data.value != null
  const health = syncHealth(data,now)
  const diagnostic = syncDiagnostic(data,now)
  const syncLabel = health==='error'?'采集异常':health==='delayed'?'数据已过期':health==='pending'?'等待首次同步'
    :health==='healthy'?'同步正常':hasData?'手动记录':'尚未配置'
- const sourceLabel = health==='error'?'采集暂停 · '+lastSampleText(data.updatedAt,now):
-   health==='delayed'?'数据过期 · '+lastSampleText(data.updatedAt,now):
-   health==='pending'?'等待第一个有效采样':lastSampleText(data.updatedAt,now)
+ const sourceLabel = health==='error'?'采集失败 · '+lastSampleText(data.updatedAt,now):
+   health==='delayed'?'超过 5 分钟 · '+lastSampleText(data.updatedAt,now):
+   health==='pending'?'等待第一个有效采样':health==='manual'?'本地手动记录':lastSampleText(data.updatedAt,now)
  return <article className={'provider-card hue-' + (info?.hue || 'slate') + (risk ? ' card-warning' : '')}>
   <div className="card-top">
    <div className="provider-emblem">{data.kind==='relay'?<Wallet size={22}/>:<img src={'./provider-icons/'+(data.kind==='chatgpt'||data.kind==='openai-api'?'openai':data.kind==='qwen'?'qwen':data.kind)+'.svg'} alt="" onError={e=>{e.currentTarget.style.display='none'}}/>}</div>
@@ -83,10 +93,10 @@ function ProviderCard({ data, isDemo, onEdit, onDetails, onRefresh, now }: { dat
    <h3>{data.name}{data.kind==='chatgpt'&&data.planTier&&<span className="plan-pill">{visiblePlan(data)}</span>}</h3>
    <p>{data.account ? '账号 · ' + data.account : info?.tagline || data.note || '自定义平台用量追踪'}</p>
   </div>
-  <div className="provider-metric">
-   <span className="label-muted">{metricText(data)}</span>
+  <div className={'provider-metric'+(health==='error'||health==='delayed'?' is-last-known':'')}>
+   <span className="label-muted">{quotaValueLabel(data,now)}</span>
    <div className="metric-main"><strong>{valueText(data)}</strong>{hasData && <span className="metric-unit">{data.unit === 'CNY' ? 'CNY' : data.unit === 'USD' ? 'USD' : data.unit}</span>}</div>
-   {ratio !== null ? <><div className="progress-track"><div style={{ width: ratio + '%' }}/></div><div className="progress-hint"><span>{data.metric === 'balance' ? '剩余占参考上限' : '已用占参考上限'} {Math.round(ratio)}%</span><span>参考 {formatNumber(data.limit!)}</span></div></> : <div className="progress-empty">{hasData ? '未设置参考上限' : '配置后即可开始追踪'}</div>}
+   {ratio !== null ? <><div className="progress-track"><div style={{ width: ratio + '%' }}/></div> <div className="progress-hint"><span>{data.unit==='%'?(data.metric==='balance'?'官方剩余百分比':'官方已用百分比'):(data.metric === 'balance' ? '剩余占参考上限' : '已用占参考上限')} {Math.round(ratio)}%</span>{data.unit!=='%'&&<span>参考 {formatNumber(data.limit!)}</span>}</div></> : <div className="progress-empty">{hasData ? '未设置参考上限' : '配置后即可开始追踪'}</div>}
   </div>
   <div className="provider-meta-stack">
   {(data.updatedAt||health==='pending') && <div className={'provider-source-tag source-'+health}
@@ -94,7 +104,7 @@ function ProviderCard({ data, isDemo, onEdit, onDetails, onRefresh, now }: { dat
    {sourceLabel}{health==='delayed'||health==='error'?' · 非实时':''}
   </div>}
   {diagnostic && !isDemo && <div className="sync-diagnostic" role="status">{diagnostic}</div>}
-  {risk && <div className="quota-alert-hint" role="status">额度预警 · {data.account||data.name} · {data.metric==='balance'?'剩余额度低于':'用量达到'} {data.alertPercent??(data.metric==='balance'?20:80)}% 阈值</div>}
+  {risk && <div className="quota-alert-hint" role="status">额度预警 · {data.account||data.name} · {alertReason} · 阈值 {data.alertPercent??(data.metric==='balance'?20:80)}%</div>}
   {data.kind==='chatgpt' ? <div className="quota-window-list">
    {activeWindows(data).length ? activeWindows(data).map(w=><div className="quota-window" key={w.id}>
     <span>{windowShortName(w)} <b>{windowPercent(w)}</b></span><span title={w.resetAt||'官方未提供恢复时间'}>{windowRemaining(w,now)}</span>
@@ -122,6 +132,7 @@ function App() {
  const [draft, setDraft] = useState<Draft>(emptyDraft)
  const [secret, setSecret] = useState('')
  const [showOptionalApiKey,setShowOptionalApiKey]=useState(false)
+ const [advancedOpen,setAdvancedOpen]=useState(false)
  const [busy, setBusy] = useState(false)
  const [refreshing, setRefreshing] = useState(false)
  const [toast, setToast] = useState('')
@@ -144,7 +155,7 @@ function App() {
  const isAndroid = Capacitor.getPlatform() === 'android'
  const viewing = items
  const filtered = viewing.filter(p => (category === '全部' || (category === '需关注' ? quotaAlert(p,now)||['error','delayed'].includes(syncHealth(p,now)) : p.category === category)) && (p.name + ' ' + p.note).toLowerCase().includes(query.toLowerCase()))
- const activeCount = viewing.filter(x => x.value != null).length
+ const freshCount = viewing.filter(x=>x.value!=null&&syncHealth(x,now)==='healthy').length
  const linkedCount = items.filter(x => x.connected || x.webMonitored).length
  const connectedCount = items.filter(x=>syncHealth(x,now)==='healthy').length
  const pausedCount = items.filter(x=>['error','delayed'].includes(syncHealth(x,now))).length
@@ -263,6 +274,7 @@ function App() {
  },[])
  function edit(p: Provider) {
   setShowOptionalApiKey(false)
+  setAdvancedOpen(false)
   setDraft({...emptyDraft,kind:p.kind,name:p.name,account:p.account || '',category:p.category,serviceType:isServiceType(p.serviceType)?p.serviceType:defaultServiceType(p.kind,p.category),metric:p.metric,value:p.value == null ? '' : String(p.value),limit:p.limit == null ? '' : String(p.limit),unit:p.unit,note:p.note || '',relayUrl:p.relay?.baseUrl||'',relayMode:p.relay?.mode||'newapi-account',relayUserId:p.relay?.userId||'',relayPath:p.relay?.path||'/api/user/self',relayField:p.relay?.field||'data.balance',relayUnit:p.relay?.unit||'额度点',relayDivisor:String(p.relay?.divisor||1),alertEnabled:!!p.alertEnabled,alertPercent:String(p.alertPercent??(p.metric==='balance'?20:80))})
   setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
   setEditor({type:'edit',id:p.id});setSidebar(false)
@@ -281,6 +293,7 @@ function App() {
   setDraft({...emptyDraft,kind,name:info.name,category:info.category,serviceType:defaultServiceType(info.kind,info.category),metric:info.metric,unit:info.unit})
   setSecret('');setWebCandidates([]);setSelectedWeb('');setWebStatus('');setWebError(false);
   setShowOptionalApiKey(false)
+  setAdvancedOpen(true)
   setAddDifferentAccount(false);setLibraryOpen(false)
   setEditor({type:'new',id})
   const existing=items.find(x=>x.kind===kind&&(x.webMonitored||x.connected))
@@ -455,6 +468,9 @@ function App() {
  function switchSection(next:Section) {setStatusOpen(false);setSection(next);setSidebar(false);setCategory('全部');setQuery('')}
  const reusablePlatform=editor?.type==='new'&&draft.kind!=='relay'&&draft.kind!=='custom'
    ?items.find(p=>p.kind===draft.kind&&(p.connected||p.webMonitored)):undefined
+ const editorAccount=editor?.type==='edit'?items.find(p=>p.id===editor.id):undefined
+ const compactExisting=!!(editorAccount&&(editorAccount.connected||editorAccount.webMonitored))
+ const expandedEditor=!compactExisting||advancedOpen
  const webOnlyDeepSeek = !!(editor?.type==='edit' && draft.kind==='deepseek' && items.some(p=>p.id===editor.id && p.webMonitored && !p.connected))
  const topCards = [...viewing].sort((a,b)=>Number(b.value!=null)-Number(a.value!=null)).slice(0,4)
  const showDetails=(p:Provider)=>{setDetailTarget(p.id);setStatusOpen(false);setEditor(null)}
@@ -509,7 +525,7 @@ function App() {
      </div>
      <section className="stats-grid">
       <div className="stat-card"><div className="stat-heading"><span>已添加平台</span><span className="stat-icon"><LayoutDashboard size={18}/></span></div><div className="stat-value">{viewing.length}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot lime"/> 多平台统一总览</div></div>
-      <div className="stat-card"><div className="stat-heading"><span>已配置额度</span><span className="stat-icon"><Gauge size={18}/></span></div><div className="stat-value">{activeCount}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot sky"/> 包含实时与手动记录</div></div>
+      <div className="stat-card"><div className="stat-heading"><span>最近有效额度</span><span className="stat-icon"><Gauge size={18}/></span></div><div className="stat-value">{freshCount}<span>个平台</span></div><div className="stat-foot"><span className="tiny-dot sky"/> 仅统计近 5 分钟成功采样</div></div>
       <div className="stat-card"><div className="stat-heading"><span>同步正常</span><span className="stat-icon"><Cloud size={18}/></span></div><div className="stat-value">{connectedCount}<span>个连接</span></div><div className="stat-foot"><span className="tiny-dot lime"/> {linkedCount} 个已授权 · 90 秒巡检</div></div>
       <div className="stat-card"><div className="stat-heading"><span>需要关注</span><span className="stat-icon"><Bell size={18}/></span></div><div className="stat-value">{warnings.length}<span>项需关注</span></div><div className="stat-foot"><span className={'tiny-dot '+(warnings.length?'coral':'lime')}/> {pausedCount?pausedCount+' 个源采集暂停或超时':warnings.length?'额度接近风险阈值':'尚无检测到的异常'}</div></div>
      </section>
@@ -517,7 +533,7 @@ function App() {
      {topCards.length ? <div className="card-grid featured-grid">{topCards.map(p=><ProviderCard key={p.id} data={p} isDemo={demoMode} onEdit={edit} onDetails={showDetails} onRefresh={p=>void refreshOne(p)} now={now}/>)}</div> :
      <div className="empty-onboarding"><Wallet size={25}/><div><strong>尚未绑定任何平台</strong><p>选择 DeepSeek、OpenAI API 或中转站，连接后在看板与桌面组件查看余额。</p></div><button className="primary-button smaller" onClick={add}><Plus size={16}/>绑定第一个账号</button></div>}
      <section className="bottom-grid"><div className="activity-panel"><div className="panel-title"><div><span className="section-kicker">同步记录</span><h3>平台状态</h3></div><span className="panel-annotation">最近更新</span></div>
-       {configured.length ? configured.slice(0,5).map(p=>{const def=definitions.find(d=>d.kind===p.kind);return <div className="activity-line" key={p.id}><span className={'activity-symbol hue-'+(def?.hue||'slate')}>{p.kind==='relay'?<Wallet size={16}/>:<img alt="" src={'./provider-icons/'+(['chatgpt','openai-api'].includes(p.kind)?'openai':p.kind)+'.svg'} />}</span><div className="activity-copy"><strong>{p.name}</strong><small>{p.webMonitored?'官网登录监测':p.connected?'官方接口同步':'本地手动记录'}</small></div><span className={'activity-amount '+(quotaAlert(p,now)?'warn':'')}>{valueText(p)} <ArrowUpRight size={14}/></span></div>}) : <div className="empty-list"><Cloud size={26}/><p>暂无额度记录，点击卡片添加数据</p></div>}
+       {configured.length ? configured.slice(0,5).map(p=>{const def=definitions.find(d=>d.kind===p.kind);return <div className="activity-line" key={p.id}><span className={'activity-symbol hue-'+(def?.hue||'slate')}>{p.kind==='relay'?<Wallet size={16}/>:<img alt="" src={'./provider-icons/'+(['chatgpt','openai-api'].includes(p.kind)?'openai':p.kind)+'.svg'} />}</span><div className="activity-copy"><strong>{p.name}</strong><small>{syncHealth(p,now)==='healthy'?'最新授权采样':syncHealth(p,now)==='manual'?'本地手动记录':'上次有效记录 · 非实时'}</small></div><span className={'activity-amount '+(quotaAlert(p,now)?'warn':'')}>{valueText(p)} <ArrowUpRight size={14}/></span></div>}) : <div className="empty-list"><Cloud size={26}/><p>暂无额度记录，点击卡片添加数据</p></div>}
       </div><div className="side-panel"><div className="panel-title"><div><span className="section-kicker">快速操作</span><h3>常用操作</h3></div></div>
        <button className="quick-action" onClick={add}><span className="quick-icon red"><Plus size={22}/></span><span><strong>绑定 AI 平台账号</strong><small>新增订阅或 API 账户</small></span><ArrowRight size={18}/></button>
        <button className="quick-action" onClick={()=>switchSection('insights')}><span className="quick-icon blue"><TrendingUp size={21}/></span><span><strong>查看额度趋势</strong><small>监控使用量与预算占比</small></span><ArrowRight size={18}/></button>
@@ -547,7 +563,7 @@ function App() {
      <section className="settings-card"><h3><Download size={20}/> 数据导出</h3><p>导出平台配置和已记录额度为 JSON，便于备份。文件中不包含 API 密钥，也不会自动上传到外部服务。</p><button className="outline-button" onClick={exportData}><Download size={18}/> 导出本地额度记录</button><div className="settings-divider"/><h3><CircleHelp size={20}/> 接入说明</h3><p>个人 ChatGPT 的订阅用量没有等同于 DeepSeek 余额的通用读取接口，因此采用手动记录与官方网页入口。OpenAI API 需要具有对应权限的组织 Admin Key。</p><button className="outline-button" onClick={()=>goTo('https://platform.deepseek.com/api_keys')}>DeepSeek 官方密钥管理 <ExternalLink size={16}/></button></section></div>
     </>}
    </main>
-   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.14.0</span><span>本地优先 · 安全管理</span></footer>
+   <footer className="footer"><span><span className="footer-dot"/> AGNOVEXA ONE / v0.14.1</span><span>本地优先 · 安全管理</span></footer>
   </div>
   {libraryOpen && <PlatformLibrary onClose={()=>setLibraryOpen(false)} onProvider={chooseProvider} onOfficial={goTo}/>}
   <IdentityPanel open={identityOpen} onClose={()=>setIdentityOpen(false)}
@@ -560,12 +576,12 @@ function App() {
      {detailProvider ? <>
       <div className="detail-summary">
        <div><span className="detail-overline">{detailProvider.category==='API'?'API 额度':'订阅额度'}</span><h3>{detailProvider.name}</h3><small>{detailProvider.account||'当前账号'}</small></div>
-       <div className="detail-balance"><small>{metricText(detailProvider)}</small><strong>{valueText(detailProvider)}</strong></div>
+       <div className="detail-balance"><small>{quotaValueLabel(detailProvider,now)}</small><strong>{valueText(detailProvider)}</strong></div>
       </div>
       <div className="detail-facts">
        <div><span>同步状态</span><strong>{syncHealth(detailProvider,now)==='healthy'?'同步正常':syncHealth(detailProvider,now)==='delayed'?'数据已过期':syncHealth(detailProvider,now)==='error'?'采样异常':syncHealth(detailProvider,now)==='pending'?'等待首次同步':'本地手动记录'}</strong></div>
        <div><span>最近成功采样</span><strong>{detailProvider.updatedAt?new Date(detailProvider.updatedAt).toLocaleString('zh-CN'):'尚无有效记录'}</strong></div>
-       <div><span>额度预警</span><strong>{detailProvider.alertEnabled?(quotaAlert(detailProvider,now)?'已达到阈值':(detailProvider.limit!=null?'已开启':'已开启 · 待设置上限')):'未开启'}</strong></div>
+       <div><span>额度预警</span><strong>{detailProvider.alertEnabled?(quotaAlert(detailProvider,now)?'已达到阈值':(detailProvider.unit==='%'||detailProvider.quotaWindows?.length||detailProvider.limit!=null?'已开启':'已开启 · 待设置上限')):'未开启'}</strong></div>
        {detailProvider.kind==='chatgpt'&&<div><span>账号套餐</span><strong>{visiblePlan(detailProvider)}</strong></div>}
        {detailProvider.category==='订阅' && detailProvider.kind!=='chatgpt' && <div><span>订阅额度恢复</span><strong>{quotaResetLabel(detailProvider,now)}</strong></div>}
       </div>
@@ -609,7 +625,16 @@ function App() {
  options={serviceTypeOptions.map(x=>({value:x.value,label:x.label}))}
  onChange={value=>setDraft(p=>({...p,serviceType:value as ServiceType,
    category:value==='api'?'API':value==='subscription'?'订阅':p.category}))} /></label></div>
-    <label className="field"><span>账号名称 / 别名</span><input value={draft.account} maxLength={80} onChange={e=>setDraft(p=>({...p,account:e.target.value}))} placeholder="例如 工作账号、个人账号（非密码）"/></label><div className="modal-two"><label className="field"><span>追踪指标</span><ReadableSelect ariaLabel="追踪指标" value={draft.metric}
+    <label className="field"><span>账号名称 / 别名</span><input value={draft.account} maxLength={80} onChange={e=>setDraft(p=>({...p,account:e.target.value}))} placeholder="例如 工作账号、个人账号（非密码）"/></label>
+    {compactExisting&&editorAccount&&<section className="editor-connection-summary">
+      <div className="editor-connection-state"><ShieldCheck size={18}/><span><strong>已复用当前授权</strong><small>{syncHealth(editorAccount,now)==='healthy'?'最近成功采样 · '+lastSampleText(editorAccount.updatedAt,now):'保留上次成功数据 · '+(syncDiagnostic(editorAccount,now)||'等待刷新')}</small></span></div>
+      <button type="button" disabled={busy||webBusy} onClick={()=>void refreshOne(editorAccount)}><RefreshCcw size={15}/>检测额度</button>
+     </section>}
+    {compactExisting&&<button type="button" className="editor-advanced-toggle" aria-expanded={advancedOpen} onClick={()=>setAdvancedOpen(x=>!x)}>
+     <Settings2 size={16}/>{advancedOpen?'收起高级设置':'展开高级设置'}<ChevronRight size={16} className={advancedOpen?'expanded':''}/>
+    </button>}
+    {expandedEditor&&<>
+    <div className="modal-two"><label className="field"><span>追踪指标</span><ReadableSelect ariaLabel="追踪指标" value={draft.metric}
  options={[{value:'balance',label:'剩余余额'},{value:'usage',label:'已使用额度'},{value:'spend',label:'本月消费'}]}
  onChange={value=>setDraft(p=>({...p,metric:value as Metric,alertPercent:value==='balance'?'20':'80'}))} /></label><label className="field"><span>单位</span><ReadableSelect ariaLabel="单位" value={draft.unit}
  options={[{value:'CNY',label:'人民币 CNY'},{value:'USD',label:'美元 USD'},{value:'次',label:'请求 / 次'},{value:'tokens',label:'Tokens'},{value:'积分',label:'积分'},{value:'%',label:'百分比 %'}]}
@@ -620,7 +645,7 @@ function App() {
        <label className="quota-alert-toggle"><input type="checkbox" checked={draft.alertEnabled} onChange={e=>setDraft(p=>({...p,alertEnabled:e.target.checked}))}/><span>额度预警</span></label>
        {draft.alertEnabled && <label className="quota-alert-threshold"><span>{draft.metric==='balance'?'剩余低于':'已用达到'}</span><input aria-label="额度预警百分比" type="number" min="1" max="99" step="1" value={draft.alertPercent} onChange={e=>setDraft(p=>({...p,alertPercent:e.target.value}))}/><span>%</span></label>}
       </div>
-      <p>{draft.alertEnabled && !(Number(draft.limit)>0)?'尚未设置参考上限，预警将在有有效参考上限后生效。':'仅依据当前账号五分钟内的有效采样及参考上限判断，不根据过期数据报警。'}</p>
+      <p>{draft.alertEnabled && draft.unit==='%'?'官方百分比额度无需填写参考上限，仅依据有效授权采样判断。':draft.alertEnabled && !(Number(draft.limit)>0)?'尚未设置参考上限，预警将在有有效参考上限后生效。':'仅依据五分钟内的有效授权采样判断，不根据过期数据报警。'}</p>
      </section>
     <label className="field"><span>备注（可选）</span><input value={draft.note} maxLength={180} onChange={e=>setDraft(p=>({...p,note:e.target.value}))} placeholder="例如 工作账号"/></label>
     {webOnlyDeepSeek && <div className="web-connected-note"><ShieldCheck size={17}/><div><strong>已通过官方网页自动监测</strong><p>无需输入 API Key。刷新会读取你已登录的官网余额，不改变现有会话与历史记录。</p>
@@ -665,6 +690,7 @@ function App() {
      </div>}
      {selectedWeb && <div className="web-quota-status">已选定指标。点击底部「保存配置」即启用网页自动监测，并写入第一条真实历史记录。</div>}
     </section>}
+    </>}
     {editor.type==='edit' && items.find(x=>x.id===editor.id)?.error && <div className="error-hint">最近连接问题：{safeErrorText(items.find(x=>x.id===editor.id)?.error)}</div>}
     <div className="modal-links">{definitions.find(x=>x.kind===draft.kind) && <button onClick={()=>goTo(definitions.find(x=>x.kind===draft.kind)!.url)}><ExternalLink size={15}/> 打开官方平台</button>}{editor.type==='edit' && items.find(x=>x.id===editor.id)?.connected && <button onClick={()=>void disconnect()}><Wifi size={15}/> 断开密钥连接</button>}{editor.type==='edit' && <button className="remove-link" onClick={remove}>移除平台</button>}</div>
    </div>

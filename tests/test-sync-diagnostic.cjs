@@ -27,6 +27,10 @@ for (const [raw, expected] of [
  assert.equal(safeErrorText(raw), output);
  assert.equal(safeErrorText(output), output, 'safe error classification remains stable when persisted');
 }
+assert.match(syncDiagnostic({...sample,webMonitored:true,error:'network timeout token=secret'},now),/后台会按重试间隔自动采样/);
+assert.doesNotMatch(syncDiagnostic({...sample,webMonitored:true,error:'network timeout token=secret'},now),/secret/);
+assert.doesNotMatch(syncDiagnostic({...sample,webMonitored:true,error:'401 session expired'},now),/后台会按重试间隔自动采样/);
+assert.match(syncDiagnostic({...sample,webMonitored:true,updatedAt:'2026-11-12T02:45:00Z'},now),/后台会按重试间隔自动采样/);
 const app = fs.readFileSync(require('node:path').join(__dirname, '../src/App.tsx'), 'utf8');
 const widget = fs.readFileSync(require('node:path').join(__dirname, '../desktop-studio.html'), 'utf8');
 assert.doesNotMatch(app, /setToast\([^\n]*(?:String\(e\)|e\.message)/, 'no raw errors in toasts');

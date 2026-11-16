@@ -1,0 +1,42 @@
+
+/* v0.14.1: trusted values and compact advanced account settings. */
+.quota-refined .provider-metric.is-last-known .metric-main strong{opacity:.73;font-variant-numeric:tabular-nums}
+.quota-refined .provider-metric.is-last-known .label-muted{color:var(--qh-muted)}
+.quota-refined .provider-metric .label-muted{overflow-wrap:anywhere}
+.quota-refined .editor-connection-summary{
+ display:flex;align-items:center;justify-content:space-between;gap:14px;
+ border:1px solid #506a76;background:#263a44;color:#e6f0f4;
+ padding:14px 15px;margin:12px 0;border-radius:12px
+}
+.quota-refined .editor-connection-state{display:flex;align-items:center;gap:11px;min-width:0}
+.quota-refined .editor-connection-state>svg{color:#8ad4b0;flex:none}
+.quota-refined .editor-connection-state>span{display:flex;flex-direction:column;gap:5px;min-width:0}
+.quota-refined .editor-connection-state strong{font-size:13px;color:#f1f5f9}
+.quota-refined .editor-connection-state small{font-size:11px;line-height:1.5;color:#b9ccd8;overflow-wrap:anywhere}
+.quota-refined .editor-connection-summary button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ flex:none;min-height:36px;padding:7px 12px;border-radius:9px;
+ border:1px solid #738d9f;color:#eaf3fb;background:#3c5062;
+ font-size:12px;font-weight:670;white-space:nowrap;transition:background .16s,border-color .16s
+}
+.quota-refined .editor-connection-summary button:hover{background:#50687c;border-color:#b6d0db}
+.quota-refined .editor-connection-summary button:disabled{opacity:.55;cursor:wait}
+.quota-refined .editor-advanced-toggle{
+ display:flex;align-items:center;gap:9px;width:100%;min-height:43px;
+ margin:6px 0 15px;padding:9px 13px;border:1px solid #4a5f73;
+ border-radius:10px;background:#29394a;color:#e0eaf4;
+ text-align:left;font-size:12px;font-weight:660;transition:background .16s,border-color .16s
+}
+.quota-refined .editor-advanced-toggle:hover{background:#35485c;border-color:#91aac0}
+.quota-refined .editor-advanced-toggle>svg:last-child{margin-left:auto;transition:transform .16s}
+.quota-refined .editor-advanced-toggle>svg.expanded{transform:rotate(90deg)}
+.quota-refined .editor-advanced-toggle:focus-visible,
+.quota-refined .editor-connection-summary button:focus-visible{outline:2px solid #e8999d;outline-offset:2px}
+@media(max-width:520px){
+ .quota-refined .editor-connection-summary{align-items:flex-start;flex-direction:column}
+ .quota-refined .editor-connection-summary button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+ .quota-refined .editor-advanced-toggle,.quota-refined .editor-advanced-toggle>svg,
+ .quota-refined .editor-connection-summary button{transition:none}
+}

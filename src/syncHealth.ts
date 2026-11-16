@@ -36,8 +36,12 @@ export function syncDiagnostic(source: Pick<Provider, 'connected' | 'webMonitore
   const health = syncHealth(source, now)
   if (health === 'healthy' || health === 'manual') return null
   if (health === 'pending') return '尚无有效额度数据，请刷新；如未登录，请先完成平台官网授权。'
-  if (health === 'delayed') return '最近一次有效数据已超过 5 分钟，请刷新并检查网络或登录状态。'
-  return safeErrorText(source.error)
+  if (health === 'delayed') return source.webMonitored
+    ? '最近一次有效数据已超过 5 分钟，后台会按重试间隔自动采样；当前保留上次成功值。'
+    : '最近一次有效数据已超过 5 分钟；当前保留上次成功值，请检查连接。'
+  const description=safeErrorText(source.error)
+  if (!source.webMonitored || description.includes('平台授权可能已失效')) return description
+  return description+' 后台会按重试间隔自动采样；当前保留上次成功值。'
 }
 
 export function lastSampleText(updatedAt?: string, now = Date.now()): string {
