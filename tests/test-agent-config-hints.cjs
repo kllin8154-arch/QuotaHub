@@ -1,0 +1,81 @@
+'use strict'
+const assert=require('node:assert/strict')
+const fs=require('node:fs')
+const os=require('node:os')
+const path=require('node:path')
+const {identifyProviders,validDirectory,createAgentDiscoveryService}=require('../electron/agentDiscoveryService.cjs')
+const fakeSecret='sk-example-THIS-IS-A-SYNTHETIC-SECRET-DO-NOT-RETURN'
+function same(actual,expected){
+ assert.deepEqual([...actual],[...expected].sort())
+ assert(!JSON.stringify(actual).includes(fakeSecret))
+}
+same(identifyProviders('opencode','opencode.jsonc',
+ '{"model":"anthropic/claude-example",// comment\n "provider":{"openrouter":{"apiKey":"'+fakeSecret+'"},"other":{}},}'),['claude','openrouter'])
+same(identifyProviders('opencode','opencode.json',
+ '{"model":"deepseek/deepseek-chat","apiKey":"'+fakeSecret+'"}'),['deepseek'])
+same(identifyProviders('opencode','opencode.json','{"apiKey":"'+fakeSecret+'","model":"gpt-6"}'),[])
+same(identifyProviders('codex','config.toml',
+ 'model_provider = "openai"\n[model_providers.not_used]\nmodel_provider = "deepseek"\napi_key = "'+fakeSecret+'"'),['openai-api'])
+same(identifyProviders('codex','config.toml','model = "gpt-example"'),[])
+same(identifyProviders('continue','config.yaml',
+ 'models:\n  - name: Coding\n    provider: openrouter\n    apiKey: '+fakeSecret+'\n  - name: Other\n    provider: deepseek\nrules:\n  - provider: anthropic'),['deepseek','openrouter'])
+same(identifyProviders('continue','config.json',
+ '{"models":[{"provider":"google","apiKey":"'+fakeSecret+'"}]}'),['gemini'])
+same(identifyProviders('continue','config.json','{"models":[{"provider":"unlisted"}]}'),[])
+same(identifyProviders('other','config.json','{"models":[{"provider":"deepseek"}]}'),[])
+same(identifyProviders('opencode','auth.json','{"model":"deepseek/x"}'),[])
+same(identifyProviders('opencode','opencode.json','{invalid json'),[])
+same(identifyProviders('opencode','opencode.json','x'.repeat(70*1024)),[])
+const root=fs.mkdtempSync(path.join(os.tmpdir(),'agnovexa-discovery-test-'))
+async function main(){
+ try{
+  const target=path.join(root,'custom-install')
+  fs.mkdirSync(target)
+  assert(validDirectory(target,fs))
+  assert(!validDirectory(path.parse(target).root,fs))
+  assert(!validDirectory('not-absolute',fs))
+  assert(!validDirectory(target,{lstatSync:()=>({isDirectory:()=>true,isSymbolicLink:()=>true})}))
+  const cfg=path.join(root,'opencode.jsonc')
+  fs.writeFileSync(cfg,'{"model":"openrouter/gpt-example","apiKey":"'+fakeSecret+'",}')
+  const large=path.join(root,'config.toml')
+  fs.writeFileSync(large,'x'.repeat(70*1024))
+  const queue=[]
+  const dialog={async showOpenDialog(){return queue.shift()||{canceled:true,filePaths:[]}}}
+  const service=()=>createAgentDiscoveryService({dataDir:root,dialog,defaults:()=>[]})
+  const s=service()
+  assert.deepEqual(s.discover(),[])
+  assert.deepEqual(await s.chooseLocation('not-real'),{status:'unsupported'})
+  assert.deepEqual(await s.chooseLocation('opencode'),{status:'canceled'})
+  queue.push({canceled:false,filePaths:[target]})
+  assert.deepEqual(await s.chooseLocation('opencode'),{status:'saved'})
+  assert.deepEqual(s.discover(),[{id:'opencode',evidence:'custom',hasCustomLocation:true}])
+  assert(!JSON.stringify(s.discover()).includes(root))
+  assert.deepEqual(service().discover(),s.discover(),'Custom folder survives restart')
+  const persisted=fs.readFileSync(path.join(root,'agent-locations.json'),'utf8')
+  assert.equal(JSON.parse(persisted).opencode,target,'Local folder path is saved only in the test profile')
+  queue.push({canceled:false,filePaths:[cfg]})
+  const hit=await s.inspectConfig('opencode')
+  assert.deepEqual(hit,{id:'opencode',status:'identified',providers:['openrouter']})
+  assert(!JSON.stringify(hit).includes(fakeSecret)&&!JSON.stringify(hit).includes(root))
+  queue.push({canceled:false,filePaths:[large]})
+  assert.deepEqual(await s.inspectConfig('codex'),{id:'codex',status:'rejected',providers:[]})
+  queue.push({canceled:false,filePaths:[large]})
+  assert.deepEqual(await s.inspectConfig('opencode'),{id:'opencode',status:'unsupported',providers:[]})
+  assert.deepEqual(await s.inspectConfig('cursor'),{id:'cursor',status:'unsupported',providers:[]})
+  assert.deepEqual(s.forgetLocation('opencode'),{status:'removed'})
+  assert.deepEqual(s.discover(),[])
+  assert.deepEqual(await s.inspectConfig('opencode'),{id:'opencode',status:'canceled',providers:[]})
+ }finally{fs.rmSync(root,{recursive:true,force:true})}
+ const src=fs.readFileSync(path.join(__dirname,'../src/PlatformLibrary.tsx'),'utf8')
+ const styles=fs.readFileSync(path.join(__dirname,'../src/ui-v0151.css'),'utf8')
+ const bridge=fs.readFileSync(path.join(__dirname,'../electron/preload.cjs'),'utf8')
+ for(const feature of ['chooseAgentLocation','forgetAgentLocation','inspectAgentConfig'])
+  assert(src.includes(feature)&&bridge.includes(feature))
+ for(const part of ['指定目录','忘记目录','选择配置并识别','配置提示匹配','确认关联'])
+  assert(src.includes(part))
+ for(const css of ['.agent-local-actions button','.agent-config-result','@media(max-width:440px)','var(--ui-control)'])
+  assert(styles.includes(css))
+ assert(!src.includes('readFileSync')&&!src.includes('session.fromPartition'))
+ console.log('AGENT_CUSTOM_LOCATION_SAFE_CONFIG_HINTS_THEME_TEST_PASS')
+}
+main().catch(error=>{console.error(error);process.exitCode=1})

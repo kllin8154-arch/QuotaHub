@@ -8,6 +8,10 @@ const path=require('node:path')
 // A hit is evidence of a local config/install, NOT an authenticated subscription.
 const specs=[
  ['opencode','config','home','.config','opencode','opencode.json'],
+ ['opencode','config','managed','opencode','opencode.json'],
+ ['opencode','config','managed','opencode','opencode.jsonc'],
+ ['opencode','config','xdg','opencode','opencode.json'],
+ ['opencode','config','xdg','opencode','opencode.jsonc'],
  ['opencode','config','home','.config','opencode','opencode.jsonc'],
  ['opencode','config','home','.config','opencode'],
  ['codex','config','home','.codex','config.toml'],
@@ -38,7 +42,9 @@ function discoverAgents({fileSystem=fs,home=os.homedir(),environment=process.env
  const roots={
   home:home,
   local:environment.LOCALAPPDATA||path.join(home,'AppData','Local'),
-  roaming:environment.APPDATA||path.join(home,'AppData','Roaming')
+  roaming:environment.APPDATA||path.join(home,'AppData','Roaming'),
+  managed:environment.PROGRAMDATA||path.join(path.parse(home).root,'ProgramData'),
+  xdg:environment.XDG_CONFIG_HOME||path.join(home,'.config')
  }
  const found=new Map()
  for(const [id,evidence,root,...parts] of specs){
@@ -51,6 +57,20 @@ function discoverAgents({fileSystem=fs,home=os.homedir(),environment=process.env
    if(!info.isDirectory?.()&&!info.isFile?.())continue
    if(!found.has(id)||evidence==='config')found.set(id,{id,evidence})
   }catch{/* Not installed, no permission, or missing: simply not found. */}
+ }
+ // Explicit environment overrides are already configured by the user.
+ // Metadata check only: never read these files or return their paths.
+ for(const [id,file] of [
+  ['opencode',environment.OPENCODE_CONFIG],
+  ['codex',environment.CODEX_HOME?path.join(environment.CODEX_HOME,'config.toml'):null]
+ ]){
+  if(!file||typeof file!=='string'||file.length>512||!path.isAbsolute(file))continue
+  if(id==='opencode'&&!['opencode.json','opencode.jsonc'].includes(path.basename(file).toLowerCase()))continue
+  try{
+   const info=fileSystem.lstatSync(file)
+   if(info.isSymbolicLink?.()||!info.isFile?.())continue
+   if(!found.has(id))found.set(id,{id,evidence:'config'})
+  }catch{}
  }
  return [...found.values()].filter(entry=>allowed.has(entry.id)).slice(0,16)
 }

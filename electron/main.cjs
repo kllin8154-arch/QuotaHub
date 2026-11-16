@@ -9,9 +9,12 @@ const { createGoogleIdentity } = require('./googleIdentity.cjs');
 const { createAccountLinks } = require('./accountLinks.cjs');
 const { createRefreshCoordinator } = require('./refreshCoordinator.cjs');
 const { createRetryGate } = require('./retryGate.cjs');
-const { discoverAgents } = require('./agentDiscovery.cjs');
-// Fixed-path, metadata-only checks; return neither local paths nor credential data.
-ipcMain.handle('agents:discover',()=>discoverAgents());
+const { createAgentDiscoveryService } = require('./agentDiscoveryService.cjs');
+let discoveryService=null;
+ipcMain.handle('agents:discover',()=>discoveryService?.discover()||[]);
+ipcMain.handle('agents:chooseLocation',(_event,id)=>discoveryService?.chooseLocation(id));
+ipcMain.handle('agents:forgetLocation',(_event,id)=>discoveryService?.forgetLocation(id));
+ipcMain.handle('agents:inspectConfig',(_event,id)=>discoveryService?.inspectConfig(id));
 const dataDir = process.env.AIQUOTA_DATA_DIR || (process.platform === 'win32' && fs.existsSync('D:\\') ? 'D:\\a系统测试\\AIQuotaHub\\data' : path.join(app.getPath('home'), 'AIQuotaHub-data'));
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
@@ -732,6 +735,7 @@ app.on('second-instance',(_event,argv)=>{
  else ensureWidgetVisible();
 });
 if(primaryInstance)app.whenReady().then(()=>{
+ discoveryService=createAgentDiscoveryService({dataDir,dialog});
  // Chromium's network stack follows the Windows proxy and certificate settings.
  // Use a non-persistent, cookie-isolated session only for Google OAuth token/userinfo.
  const googleOAuthNetwork=session.fromPartition('agnovexa-one-google-oauth');

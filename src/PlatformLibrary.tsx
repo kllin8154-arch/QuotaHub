@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Bot, Check, ChevronRight, Code2, ExternalLink, KeyRound, RefreshCcw, Search, Server, TerminalSquare, X } from 'lucide-react'
+import { ArrowRight, Bot, Check, ChevronRight, Code2, ExternalLink, FolderPlus, KeyRound, RefreshCcw, Search, Server, TerminalSquare, Trash2, FileSearch2, X } from 'lucide-react'
 import { definitions } from './catalog'
 import { agentCatalog, agentSearch, type AgentEntry } from './agentCatalog'
 import { readAgentLinks, writeAgentLinks } from './agentLinks'
-import type { DetectedAgent, ProviderKind } from './types'
+import type { AgentConfigHint, DetectedAgent, ProviderKind } from './types'
 
 type KnownProvider={id:string;kind:ProviderKind;name:string;account?:string;category:'API'|'订阅'}
 type Props={
@@ -28,12 +28,16 @@ export default function PlatformLibrary({onClose,onProvider,onOfficial,knownProv
  const [scanState,setScanState]=useState<'scanning'|'ready'|'unavailable'>('scanning')
  const [links,setLinks]=useState(readAgentLinks)
  const [pending,setPending]=useState<{agentId:string;providerId:string}|null>(null)
+ const [locationBusy,setLocationBusy]=useState<string|null>(null)
+ const [configBusy,setConfigBusy]=useState<string|null>(null)
+ const [configHints,setConfigHints]=useState<Record<string,AgentConfigHint>>({})
+ const [notice,setNotice]=useState<string>('')
  const scan=useCallback(async()=>{
   if(!window.quotaBridge?.discoverAgents){setScanState('unavailable');return}
   setScanState('scanning')
   try{
    const data=await window.quotaBridge.discoverAgents()
-   setDiscovered(Array.isArray(data)?data.filter(d=>allowedIds.has(d.id)&&['config','app'].includes(d.evidence)).slice(0,16):[])
+   setDiscovered(Array.isArray(data)?data.filter(d=>allowedIds.has(d.id)&&['config','app','custom'].includes(d.evidence)).slice(0,16):[])
    setScanState('ready')
   }catch{setDiscovered([]);setScanState('unavailable')}
  },[])
@@ -45,6 +49,35 @@ export default function PlatformLibrary({onClose,onProvider,onOfficial,knownProv
   .sort((a,b)=>Number(discoveredMap.has(b.id))-Number(discoveredMap.has(a.id))),[group,term,discoveredMap])
  const providers=useMemo(()=>definitions.filter(d=>
   !term||[d.name,d.category,d.tagline,d.kind].join(' ').toLocaleLowerCase().includes(term)),[term])
+ async function chooseLocation(id:string){
+  if(!window.quotaBridge?.chooseAgentLocation)return
+  setLocationBusy(id);setNotice('')
+  try{
+   const result=await window.quotaBridge.chooseAgentLocation(id)
+   if(result?.status==='saved'){setNotice('自定义目录已保存至本机；不会读取目录内的文件内容。');await scan()}
+   else if(result?.status==='rejected')setNotice('所选目录不符合安全要求，请选择普通本地目录。')
+  }catch{setNotice('无法保存自定义目录。')}
+  finally{setLocationBusy(null)}
+ }
+ async function forgetLocation(id:string){
+  if(!window.quotaBridge?.forgetAgentLocation)return
+  setLocationBusy(id);setNotice('')
+  try{
+   const result=await window.quotaBridge.forgetAgentLocation(id)
+   if(result?.status==='removed'){setNotice('已忘记本机自定义目录，原文件没有修改。');await scan()}
+  }catch{setNotice('暂时无法清除该目录关联。')}
+  finally{setLocationBusy(null)}
+ }
+ async function inspectConfig(id:string){
+  if(!window.quotaBridge?.inspectAgentConfig)return
+  setConfigBusy(id);setNotice('')
+  try{
+   const result=await window.quotaBridge.inspectAgentConfig(id)
+   if(result?.id===id&&result.status!=='canceled')
+    setConfigHints(current=>({...current,[id]:result}))
+  }catch{setNotice('本机配置识别失败，未读取或保存供应商额度。')}
+  finally{setConfigBusy(null)}
+ }
  function applyLink(agentId:string,providerId:string){
   const p=knownProviders.find(x=>x.id===providerId)
   if(!p||!allowedIds.has(agentId))return
@@ -70,6 +103,7 @@ export default function PlatformLibrary({onClose,onProvider,onOfficial,knownProv
     <label className="library-search"><Search size={17}/><input autoFocus type="search" value={query} onChange={e=>setQuery(e.target.value)}
      placeholder={tab==='agent'?'搜索 OpenCode、WorkBuddy、Cline…':'搜索 DeepSeek、OpenRouter、API…'} aria-label="搜索平台目录"/></label>
    </div>
+   {tab==='agent'&&notice&&<div className="agent-discovery-notice" role="status">{notice}</div>}
    {tab==='agent'&&<div className="agent-discovery-bar" role="status">
      <span className={'agent-discovery-dot '+(scanState==='ready'?'is-ready':'')}/>
      <span>{scanState==='scanning'?'正在检查本机工具…':scanState==='unavailable'?'仅桌面版支持本机发现':`发现 ${discovered.length} 个本机工具或配置`}</span>
@@ -91,19 +125,49 @@ export default function PlatformLibrary({onClose,onProvider,onOfficial,knownProv
      </div>:
      <div className="library-grid">
       {agents.map(a=>{
-       const evidence=discoveredMap.get(a.id)
+       const detected=discovered.find(d=>d.id===a.id)
+       const evidence=detected?.evidence
+       const hint=configHints[a.id]
+       const suggested=hint?.status==='identified'?hint.providers:[]
+       const accounts=[...knownProviders].sort((a,b)=>Number(suggested.includes(b.kind))-Number(suggested.includes(a.kind)))
        const stored=links[a.id]
        const linked=stored?knownProviders.find(p=>p.id===stored.providerId&&p.kind===stored.kind):undefined
        const candidate=pending?.agentId===a.id?knownProviders.find(p=>p.id===pending.providerId):undefined
        return <article key={a.id} className={'library-entry agent-entry '+(selected===a.id?'expanded':'')}>
         <button className="library-agent-main" onClick={()=>{setSelected(selected===a.id?null:a.id);setPending(null)}} aria-expanded={selected===a.id}>
          <span className="library-symbol"><AgentGlyph entry={a}/></span>
-         <span className="library-entry-copy"><strong>{a.name}{evidence&&<span className="agent-detected-badge">{evidence==='app'?'本机应用':'本机配置'}</span>}</strong>
+         <span className="library-entry-copy"><strong>{a.name}{evidence&&<span className="agent-detected-badge">{evidence==='app'?'本机应用':evidence==='custom'?'指定目录':'本机配置'}</span>}</strong>
           <small>{a.vendor} · {a.category}</small><span className="library-micro">{a.auth}</span></span>
          <ChevronRight className="library-entry-arrow" size={16}/>
         </button>
         {selected===a.id&&<div className="library-agent-detail">
          <p>{a.summary}</p><p className="library-caution">{a.note}</p>
+         <div className="agent-local-tools">
+          <div className="agent-local-tools-copy"><strong>本机识别</strong><small>已知目录自动检测；额外目录由你选择并仅保存在本机。</small></div>
+          <div className="agent-local-actions">
+           <button type="button" disabled={!!locationBusy} onClick={()=>void chooseLocation(a.id)}>
+            <FolderPlus size={15}/>{locationBusy===a.id?'正在选择…':'指定目录'}
+           </button>
+           {detected?.hasCustomLocation&&<button type="button" disabled={!!locationBusy} onClick={()=>void forgetLocation(a.id)}>
+            <Trash2 size={14}/>忘记目录
+           </button>}
+           {['opencode','codex','continue'].includes(a.id)&&<button type="button"
+            disabled={!!configBusy} onClick={()=>void inspectConfig(a.id)}
+            title="明确选择一个受支持的配置文件，仅读取供应商字段；不会上传文件或保存密钥">
+            <FileSearch2 size={15}/>{configBusy===a.id?'正在本地识别…':'选择配置并识别'}
+           </button>}
+          </div>
+          {hint&&<div className="agent-config-result" role="status">
+           {hint.status==='identified'?<>
+            <strong>发现配置中的供应商提示（未授权）</strong>
+            <div>{hint.providers.map(kind=><span key={kind}>
+             {definitions.find(d=>d.kind===kind)?.name||kind}</span>)}</div>
+            <small>仅作为关联候选排序依据；不代表登录成功或实际付费来源。</small>
+           </>:hint.status==='unknown'?'未识别到可靠的供应商字段，仍可手动选择实际额度账号。':
+           hint.status==='rejected'?'文件被安全检查拒绝：仅支持普通、小于 64KB 的配置文件。':
+           '该工具或文件格式暂无专用解析适配。'}
+          </div>}
+         </div>
          <div className="agent-link-surface">
           <div className="agent-link-title"><strong>实际额度来源</strong>
            <span>{linked?'已关联':stored?'待重新授权':evidence?'待确认':'可手动关联'}</span>
@@ -112,11 +176,12 @@ export default function PlatformLibrary({onClose,onProvider,onOfficial,knownProv
            <span>{linked.name}{linked.account?' · '+linked.account:''}<small>{linked.category==='订阅'?'订阅账号':'API 账户'} · 只共享额度显示关系，不共享凭据</small></span>
            <button type="button" onClick={()=>unlink(a.id)}>解除关联</button>
           </div>:stored?<p className="agent-link-hint">原关联账号目前未授权或已经移除，暂不显示对应额度。</p>:null}
-          {knownProviders.length?<div className="agent-account-choices">
-           {knownProviders.map(p=><button type="button" key={p.id}
+          {accounts.length?<div className="agent-account-choices">
+           {accounts.map(p=><button type="button" key={p.id}
             className={pending?.agentId===a.id&&pending?.providerId===p.id?'selected':''}
             onClick={()=>setPending({agentId:a.id,providerId:p.id})}>
-            <span>{p.name}{p.account?' · '+p.account:''}</span><small>{p.category}</small>
+            <span>{p.name}{p.account?' · '+p.account:''}</span><small>
+              {suggested.includes(p.kind)?'配置提示匹配 · ':''}{p.category}</small>
            </button>)}
           </div>:<p className="agent-link-hint">没有可复用的已授权额度账号。请在下方选择实际使用的供应商。</p>}
           {candidate&&<div className="agent-link-confirm" role="group" aria-label="确认关联真实额度账号">
@@ -139,7 +204,7 @@ export default function PlatformLibrary({onClose,onProvider,onOfficial,knownProv
      </div>}
     {(tab==='agent'?agents.length:providers.length)===0&&<div className="library-empty"><Search size={23}/><p>{group==='本机发现'?'当前未找到匹配的本机工具，可切换“全部”查看支持列表。':'没有匹配的平台，请尝试名称或类别搜索。'}</p></div>}
    </div>
-   <footer className="library-footer"><span>本机检测仅检查固定路径是否存在；不读取配置内容和密钥。关联额度需由你确认。</span><button onClick={onClose}>返回工作台</button></footer>
+   <footer className="library-footer"><span>默认只检测目录；选择配置文件后才在本机分析供应商字段，不上传文件、密钥或凭据。</span><button onClick={onClose}>返回工作台</button></footer>
   </section>
  </div>
 }
