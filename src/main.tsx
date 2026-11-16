@@ -11,5 +11,6 @@ import './identity.css'
 import './ui-polish.css'
 import './ui-v0140.css'
 import './ui-v0141.css'
+import './ui-v0150.css'
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>)
 if ('serviceWorker' in navigator && !import.meta.env.DEV && (location.protocol === 'https:' || location.hostname === '127.0.0.1')) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}))

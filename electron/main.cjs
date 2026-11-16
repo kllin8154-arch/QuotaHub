@@ -9,7 +9,10 @@ const { createGoogleIdentity } = require('./googleIdentity.cjs');
 const { createAccountLinks } = require('./accountLinks.cjs');
 const { createRefreshCoordinator } = require('./refreshCoordinator.cjs');
 const { createRetryGate } = require('./retryGate.cjs');
-const dataDir = process.env.AIQUOTA_DATA_DIR || path.join(app.getPath('userData'), 'local-data');
+const { discoverAgents } = require('./agentDiscovery.cjs');
+// Fixed-path, metadata-only checks; return neither local paths nor credential data.
+ipcMain.handle('agents:discover',()=>discoverAgents());
+const dataDir = process.env.AIQUOTA_DATA_DIR || (process.platform === 'win32' && fs.existsSync('D:\\') ? 'D:\\a系统测试\\AIQuotaHub\\data' : path.join(app.getPath('home'), 'AIQuotaHub-data'));
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
 app.setAppUserModelId('com.agnovexa.one.desktop');

@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('quotaBridge', Object.freeze({
  disconnect: (kind, id) => ipcRenderer.invoke('quota:disconnect', kind, id),
  connected: () => ipcRenderer.invoke('quota:connected'),
  openExternal: url => ipcRenderer.invoke('quota:openExternal', url),
+ discoverAgents: () => ipcRenderer.invoke('agents:discover'),
  updateWidgetAccounts: accounts => ipcRenderer.invoke('quota:updateWidgetAccounts', accounts),
   webOpen: (kind,id) => ipcRenderer.invoke('quota:webOpen',kind,id),
   webRead: (kind,id) => ipcRenderer.invoke('quota:webRead',kind,id),

@@ -1,0 +1,115 @@
+/* v0.15.0. Agent discovery/association uses the existing three-theme tokens. */
+.quota-refined .agent-discovery-bar{
+ display:flex;align-items:center;gap:10px;min-height:48px;
+ padding:7px 14px;margin:0 20px 9px;border:1px solid var(--ui-card-border);
+ border-radius:11px;background:var(--ui-note);color:var(--qh-text);font-size:12px;
+}
+.quota-refined .agent-discovery-dot{
+ width:7px;height:7px;flex:none;border-radius:50%;background:var(--qh-subtle)
+}
+.quota-refined .agent-discovery-dot.is-ready{background:#62c7a6}
+.quota-refined .agent-discovery-bar>span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+.quota-refined .agent-discovery-bar button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:36px;padding:6px 12px;border-radius:9px;border:1px solid var(--ui-card-border);
+ background:var(--ui-control);color:var(--qh-text);font-size:11px;font-weight:680;
+ white-space:nowrap;transition:background .16s,border-color .16s,transform .16s;
+}
+.quota-refined .agent-discovery-bar button:hover:not(:disabled){
+ background:var(--ui-card-hover);border-color:var(--qh-accent)
+}
+.quota-refined .agent-discovery-bar button:disabled{opacity:.55;cursor:wait}
+.quota-refined .library-groups .discovered-count{
+ margin-left:5px;display:inline-flex;align-items:center;justify-content:center;
+ min-width:18px;height:17px;border-radius:5px;padding:0 3px;
+ background:var(--ui-control-selected);font-size:10px;color:var(--qh-text)
+}
+.quota-refined .agent-detected-badge{
+ display:inline-flex;align-items:center;margin-left:8px;vertical-align:middle;
+ padding:3px 6px;border:1px solid var(--ui-card-border);
+ color:var(--qh-text);background:var(--ui-control-selected);
+ border-radius:6px;font-size:10px;line-height:1.2;font-weight:640;white-space:nowrap
+}
+.quota-refined .agent-link-surface{
+ border:1px solid var(--ui-card-border);border-radius:12px;padding:12px;
+ margin:10px 0 12px;background:var(--ui-note);min-width:0
+}
+.quota-refined .agent-link-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.quota-refined .agent-link-title strong{font-size:12px;color:var(--qh-text)}
+.quota-refined .agent-link-title>span{font-size:10px;color:var(--ui-muted)}
+.quota-refined .agent-link-hint{font-size:11px;line-height:1.6;color:var(--qh-muted);margin:6px 0 9px}
+.quota-refined .agent-linked-account{
+ display:flex;align-items:center;gap:9px;padding:9px;
+ border-radius:9px;border:1px solid var(--ui-card-border);background:var(--ui-card);
+ color:var(--qh-text);min-width:0
+}
+.quota-refined .agent-linked-account>svg{flex:none;color:#65c4a0}
+.quota-refined .agent-linked-account>span{flex:1;min-width:0;overflow-wrap:anywhere;font-size:11px;font-weight:680}
+.quota-refined .agent-linked-account small{display:block;margin-top:4px;color:var(--qh-muted);font-weight:430;font-size:10px}
+.quota-refined .agent-linked-account>button{
+ min-height:34px;flex:none;padding:6px 10px;border-radius:8px
+}
+.quota-refined .agent-account-choices{display:flex;flex-wrap:wrap;gap:7px;max-height:132px;overflow-y:auto;min-width:0}
+.quota-refined .agent-account-choices button{
+ display:inline-flex;align-items:center;justify-content:space-between;
+ gap:10px;max-width:100%;min-width:0;min-height:36px;padding:7px 10px;
+ border:1px solid var(--ui-card-border);border-radius:9px;
+ background:var(--ui-card);color:var(--qh-text);
+ font-size:11px;line-height:1.3;transition:background .15s,border-color .15s
+}
+.quota-refined .agent-account-choices button>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.quota-refined .agent-account-choices button small{
+ flex:none;color:var(--ui-muted);font-size:10px
+}
+.quota-refined .agent-account-choices button.selected,
+.quota-refined .agent-account-choices button:hover{
+ background:var(--ui-control-selected);border-color:var(--qh-accent)
+}
+.quota-refined .agent-link-confirm{
+ margin-top:10px;padding:10px 12px;border:1px solid var(--ui-card-border);
+ border-radius:9px;background:var(--ui-card)
+}
+.quota-refined .agent-link-confirm p{font-size:11px;line-height:1.6;color:var(--qh-muted);margin:0 0 10px}
+.quota-refined .agent-link-confirm strong{color:var(--qh-text)}
+.quota-refined .agent-link-confirm>div{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
+.quota-refined .agent-link-confirm button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+ min-height:36px;padding:7px 14px;border-radius:9px;white-space:nowrap
+}
+.quota-refined .agent-link-confirm .agent-confirm-button{
+ background:var(--ui-control-selected);border:1px solid var(--qh-accent);color:var(--qh-text)
+}
+.quota-refined .agent-link-confirm .agent-confirm-button:hover{background:var(--ui-card-hover)}
+.quota-refined .agent-link-surface button{
+ background-color:var(--ui-control);color:var(--qh-text);
+ border:1px solid var(--ui-card-border);font-family:inherit
+}
+.quota-refined .agent-link-surface button:hover{background-color:var(--ui-card-hover);border-color:var(--qh-accent)}
+.quota-refined .agent-link-surface button.selected{
+ background-color:var(--ui-control-selected);border-color:var(--qh-accent)
+}
+.quota-refined .agent-link-surface .agent-confirm-button{background:var(--ui-control-selected);border-color:var(--qh-accent)}
+.quota-refined .agent-discovery-bar button:active,.quota-refined .agent-link-surface button:active{
+ transform:translateY(1px)
+}
+.quota-refined .agent-discovery-bar button:focus-visible,.quota-refined .agent-link-surface button:focus-visible{
+ outline:2px solid var(--qh-accent);outline-offset:2px
+}
+.quota-refined .library-agent-buttons button{
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px
+}
+@media(max-width:700px){
+ .quota-refined .agent-discovery-bar{margin:0 12px 9px}
+ .quota-refined .agent-account-choices button{flex:1 1 44%}
+}
+@media(max-width:420px){
+ .quota-refined .agent-discovery-bar{gap:8px;padding:7px 9px}
+ .quota-refined .agent-discovery-bar button{padding:6px 9px}
+ .quota-refined .agent-linked-account{flex-wrap:wrap}
+ .quota-refined .agent-linked-account>button{margin-left:auto}
+ .quota-refined .agent-account-choices button{flex:1 1 100%}
+ .quota-refined .agent-link-confirm>div button{flex:1}
+}
+@media(prefers-reduced-motion:reduce){
+ .quota-refined .agent-discovery-bar button,.quota-refined .agent-account-choices button{transition:none}
+}
