@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, safeStorage, shell, screen, Menu, Tray, nativeImage, session, dialog } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const {pathToFileURL} = require('node:url');
 const https = require('node:https');
 const dns = require('node:dns');
 const net = require('node:net');
@@ -16,7 +17,7 @@ ipcMain.handle('agents:discover',()=>discoveryService?.discover()||[]);
 ipcMain.handle('agents:chooseLocation',(_event,id)=>discoveryService?.chooseLocation(id));
 ipcMain.handle('agents:forgetLocation',(_event,id)=>discoveryService?.forgetLocation(id));
 ipcMain.handle('agents:inspectConfig',(_event,id)=>discoveryService?.inspectConfig(id));
-const dataDir = process.env.AIQUOTA_DATA_DIR || (process.platform === 'win32' && fs.existsSync('D:\\') ? 'D:\\a系统测试\\AIQuotaHub\\data' : path.join(app.getPath('home'), 'AIQuotaHub-data'));
+const dataDir = process.env.AIQUOTA_DATA_DIR || path.join(app.getPath('userData'), 'local-data');
 fs.mkdirSync(dataDir, { recursive: true });
 app.setPath('userData', dataDir);
 app.setAppUserModelId('com.agnovexa.one.desktop');
@@ -361,17 +362,75 @@ function createWindow(detailId) {
  }
  const win=new BrowserWindow({width:1440,height:910,minWidth:880,minHeight:650,backgroundColor:'#08090d',title:'Agnovexa One',autoHideMenuBar:true,show:false,
   webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true}});
- dashboardWindow=win;
+  dashboardWindow=win;
  win.on('closed',()=>{if(dashboardWindow===win)dashboardWindow=null});
- win.once('ready-to-show',()=>win.show());
+ // Do not expose a white/empty Electron surface before the bundled React app mounts.
+ // Watch only the local packaged page; a broken network login never drives this UI.
+ const dashboardFile=path.join(__dirname,'../dist/index.html');
+ const dashboardURL=pathToFileURL(dashboardFile).href;
+ const devDashboard=!app.isPackaged&&process.env.AIQUOTA_DEV==='1';
+ const isAppPage=()=>win.webContents.getURL().startsWith('file:')||
+  (devDashboard&&win.webContents.getURL().startsWith('http://127.0.0.1:5173/'));
+ const loadDashboard=()=>devDashboard?win.loadURL('http://127.0.0.1:5173/'):
+  win.loadFile(dashboardFile,detailId?{query:{detail:detailId}}:undefined);
+ let localReady=false,loadRetried=false,checking=false,rendererRestarts=0;
+ const showDashboardFallback=()=>{
+  if(win.isDestroyed()||localReady)return;
+  const html='<!doctype html><html lang="zh-CN"><meta charset="UTF-8"><title>Agnovexa One 页面恢复</title>'+
+  '<style>body{background:#202e3b;color:#e6edf4;font:14px "Microsoft YaHei",sans-serif;min-height:90vh;display:grid;place-items:center}'+
+  'main{max-width:450px;padding:36px;background:#2b3948;border:1px solid #405465;border-radius:18px}h2{margin-top:0;font-size:20px}p{line-height:1.75;color:#bbcbd9}a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;background:#3f6572;border-radius:9px;padding:0 16px;color:#fff;text-decoration:none}</style>'+
+  '<main><h2>界面暂时未能加载</h2><p>本地界面启动失败或渲染中断，不影响已保存的账号与额度历史。可重试载入主界面。</p><a href="'+dashboardURL+'">重新载入主界面</a></main></html>';
+  void win.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(html)).catch(()=>{});
+  win.show();
+ };
+ const verifyDashboard=async()=>{
+  if(win.isDestroyed()||localReady||checking||!isAppPage())return;
+  checking=true;
+  let mounted=false;
+  try{mounted=await win.webContents.executeJavaScript(
+   'Boolean(document.querySelector("#root")?.querySelector(".sidebar"))',true)}catch{}
+  checking=false;
+  if(win.isDestroyed()||localReady)return;
+  if(mounted){localReady=true;win.show();return;}
+  if(!loadRetried){
+   loadRetried=true;
+   void loadDashboard().catch(()=>showDashboardFallback());
+  }else showDashboardFallback();
+ };
+ win.webContents.on('did-finish-load',()=>{
+  if(!isAppPage())return;
+  setTimeout(()=>void verifyDashboard(),1800).unref?.();
+ });
+ win.webContents.on('did-fail-load',(_event,code,_description,_url,mainFrame)=>{
+  if(code===-3||mainFrame===false||localReady)return;
+  if(!loadRetried){
+   loadRetried=true;
+   setTimeout(()=>{if(!win.isDestroyed())void loadDashboard().catch(showDashboardFallback)},600).unref?.();
+  }else showDashboardFallback();
+ });
+ win.webContents.on('render-process-gone',()=>{
+  if(win.isDestroyed())return;
+  localReady=false;
+  if(++rendererRestarts>1){showDashboardFallback();return}
+  loadRetried=true;
+  setTimeout(()=>{if(!win.isDestroyed())void loadDashboard().catch(showDashboardFallback)},600).unref?.();
+ });
+ setTimeout(()=>{
+  if(win.isDestroyed()||localReady)return;
+  if(!isAppPage()){
+   if(!loadRetried){loadRetried=true;void loadDashboard().catch(showDashboardFallback)}
+   else showDashboardFallback();
+   return;
+  }
+  void verifyDashboard();
+ },8500).unref?.();
  win.webContents.setWindowOpenHandler(({url})=>{try{const u=new URL(url);if(u.protocol==='https:' && allowedHosts.has(u.hostname)) shell.openExternal(url);}catch{}return {action:'deny'};});
  win.webContents.on('will-navigate',(event,url)=>{
   if (url.startsWith('http://127.0.0.1:5173/')||url.startsWith('file://'))return;
   event.preventDefault();
   try{const u=new URL(url);if(u.protocol==='https:' && allowedHosts.has(u.hostname))shell.openExternal(url);}catch{}
  });
- if(!app.isPackaged && process.env.AIQUOTA_DEV==='1')win.loadURL('http://127.0.0.1:5173/');
- else win.loadFile(path.join(__dirname,'../dist/index.html'),detailId?{query:{detail:detailId}}:undefined);
+ void loadDashboard().catch(()=>showDashboardFallback());
  return win;
 }
 let gadget;
@@ -391,7 +450,7 @@ function expandedDimensions(){
 }
 const miniSizes={edge:[44,108],orb:[68,68],island:[244,66]};
 const settingsPath=path.join(dataDir,'widget-settings.json');
-const defaults={layout:'card',tint:'smoke',logo:'ring',opacity:91,pin:false,showTaskbar:true,
+const defaults={layout:'card',tint:'smoke',logo:'ring',opacity:91,pin:false,showTaskbar:false,
  customWidth:null,customHeight:null,x:null,y:null,compactX:null,compactY:null,
  collapseMode:'edge',collapsed:false,dockSide:'right'};
 function readWidgetSettings(){
@@ -404,7 +463,8 @@ function readWidgetSettings(){
  if(['bars','ring','layers'].includes(raw.logo))result.logo=raw.logo;
  if(Number.isInteger(raw.opacity))result.opacity=Math.min(95,Math.max(25,raw.opacity));
  if(typeof raw.pin==='boolean')result.pin=raw.pin;
- if(typeof raw.showTaskbar==='boolean')result.showTaskbar=raw.showTaskbar;
+ // v0.15.3 migration: widget is tray-only, including for legacy profiles.
+ result.showTaskbar=false;
  if(['none','edge','orb','island'].includes(raw.collapseMode))result.collapseMode=raw.collapseMode;
  if(typeof raw.collapsed==='boolean')result.collapsed=raw.collapsed&&result.collapseMode!=='none';
  if(['left','right'].includes(raw.dockSide))result.dockSide=raw.dockSide;
@@ -581,7 +641,7 @@ function createWidget(){
  const bounds=widgetBounds();
  gadget=new BrowserWindow({
   ...bounds,minWidth:bounds.width,maxWidth:bounds.width,minHeight:bounds.height,maxHeight:bounds.height,
-  frame:false,transparent:true,hasShadow:false,skipTaskbar:!widgetSettings.showTaskbar,alwaysOnTop:widgetSettings.pin,
+  frame:false,transparent:true,hasShadow:false,skipTaskbar:true,alwaysOnTop:widgetSettings.pin,
   autoHideMenuBar:true,show:false,resizable:false,movable:true,minimizable:true,fullscreenable:false,
   backgroundColor:'#00000000',
   webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,webSecurity:true}
@@ -647,7 +707,7 @@ function bringWidgetToFront(){
  const w=gadget;
  if(w.isMinimized())w.restore();
  // Restore the user's optional taskbar preference when the tray icon is clicked.
- w.setSkipTaskbar(!widgetSettings.showTaskbar);
+ w.setSkipTaskbar(true);
  w.show();
  w.setAlwaysOnTop(true,'floating');
  w.moveTop();
@@ -692,8 +752,6 @@ function updateTrayMenu() {
    click:()=>setWidgetAppearance({opacity})
   }))},
   {label:'始终置顶',type:'checkbox',checked:widgetSettings.pin,click:item=>setWidgetAppearance({pin:item.checked})},
-  {label:'显示任务栏按钮',type:'checkbox',checked:!!widgetSettings.showTaskbar,
-    click:item=>{widgetSettings.showTaskbar=item.checked;saveWidgetSettings();if(gadget&&!gadget.isDestroyed())gadget.setSkipTaskbar(!widgetSettings.showTaskbar);updateTrayMenu();}},
   {type:'separator'},
   {label:'打开额度管理',click:()=>createWindow()},
   {label:'重新启动 Agnovexa One',click:()=>{void requestExit({restart:true})}},

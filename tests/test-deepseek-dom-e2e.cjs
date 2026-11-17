@@ -10,11 +10,14 @@ const temp=path.join(root,'.qa','deepseek-end-to-end-fixture')
 fs.mkdirSync(temp,{recursive:true})
 const handlers=new Map()
 let visible='用量信息\n充值余额 余额预警已开启 去设置\n¥1.88 CNY\n累计消费金额\n¥432.28 CNY\n赠送余额\n¥6.40 CNY\n消费金额\n¥3.93 CNY'
-const mockSession={setPermissionRequestHandler:()=>{},on:()=>{},clearStorageData:async()=>{},flushStorageData:()=>{}}
+let responseHandler=null
+const mockSession={setPermissionRequestHandler:()=>{},on:()=>{},clearStorageData:async()=>{},flushStorageData:()=>{},
+ webRequest:{onCompleted:(_filter,fn)=>{responseHandler=fn}}}
 class FakeWindow extends EventEmitter{
  constructor(){
   super();this.closed=false;this.url='';this.shown=false;this.webContents=new EventEmitter()
   this.webContents.session=mockSession
+  this.webContents.id=1
   this.webContents.getURL=()=>this.url
   this.webContents.isLoadingMainFrame=()=>false
   this.webContents.setWindowOpenHandler=()=>{}
@@ -60,6 +63,17 @@ async function test(){
  const recovered=await handlers.get('quota:webSample')(null,'deepseek',id)
  assert.equal(recovered.value,8.26,'Reuses existing account session and recovers automatically')
  assert.equal(updates.filter(x=>x.type==='snapshot').length,3)
+ // A provider-side WAF 429 must show an actionable local failure page and
+ // stop redundant refreshes without deleting previously authorized records.
+ assert.equal(typeof responseHandler,'function')
+ responseHandler({webContentsId:1,resourceType:'mainFrame',url:'https://platform.deepseek.com/usage',statusCode:429})
+ await new Promise(resolve=>setTimeout(resolve,240))
+ const guarded=monitor._testWindows.get('deepseek--'+id)
+ assert(guarded.webContents.getURL().startsWith('data:text/html'),'429 must replace blank official window with a helpful local page')
+ assert(decodeURIComponent(guarded.webContents.getURL()).includes('HTTP 429'))
+ await assert.rejects(handlers.get('quota:webSample')(null,'deepseek',id),/冷却期/,'429 must throttle manual requests too')
+ assert.equal((await handlers.get('quota:history')(null,id)).at(-1).value,8.26,'Keep last real balance after limit')
+ assert(updates.some(x=>x.type==='stale'&&x.reason.includes('429')))
  await handlers.get('quota:webUnbind')(null,id)
  monitor.shutdown()
  console.log('DEEPSEEK_EXISTING_WEB_SESSION_8_28_TO_8_27_TO_8_26_RECOVERY_PASS')

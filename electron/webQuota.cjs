@@ -3,6 +3,7 @@ const { BrowserWindow, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createRetryGate } = require('./retryGate.cjs');
+const { classifyWebError, officialFailureHtml, shouldHardRefresh } = require('./webWindowRecovery.cjs');
 const { visibleQuotaReset } = require('./quotaReset.cjs');
 const { windowsFromVisibleText, planTierFromVisibleText } = require('./usageWindows.cjs');
 
@@ -21,6 +22,7 @@ const SITES = Object.freeze({
 });
 
 const windows=new Map();
+const pageHealth=new Map();
 const recovery=createRetryGate();
 let shuttingDown=false;
 let dataPath;
@@ -230,7 +232,14 @@ function open(kind,id,visible=true) {
  safeId(id);const site=safeSite(kind);
  const key=sessionKey(kind,id);
  let win=windows.get(key);
- if(win&&!win.isDestroyed()){if(visible){win.show();win.focus()}return {url:win.webContents.getURL()||site.url}}
+ if(win&&!win.isDestroyed()){
+  const health=pageHealth.get(key);
+  if(visible){
+   if(health){health.userRequested=true;if(health.failure)health.showFailure?.();}
+   win.show();win.focus();
+  }
+  return {url:win.webContents.getURL()||site.url}
+ }
  // Persistent isolated Chromium profile for voluntary "remember login" in local userData.
  // The app never reads its cookies; user may remove it by deleting the binding.
  win=new BrowserWindow({
@@ -240,7 +249,54 @@ function open(kind,id,visible=true) {
     partition:'persist:quota-browser-'+key,backgroundThrottling:false}
  });
  windows.set(key,win);
+ const health={failure:null,httpStatus:0,userRequested:visible,fallback:false,lastReloadAt:Date.now(),sampled:false};
+ pageHealth.set(key,health);
+ const showFailure=()=>{
+  if(!health.failure||win.isDestroyed()||health.fallback||!health.userRequested)return;
+  health.fallback=true;
+  try{void win.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(officialFailureHtml(site.url,health.failure))).catch(()=>{})}catch{}
+  win.show();
+ };
+ health.showFailure=showFailure;
+ const fail=(reason,status=0)=>{
+  if(win.isDestroyed()||health.fallback)return;
+  if(health.failure===reason&&health.httpStatus===status)return;
+  health.failure=reason;health.httpStatus=status;
+  if(status===429 && readFile(bindingsPath,{})[id]){
+   recovery.failed(id,new Error('HTTP 429 Too Many Requests'));
+   notify({type:'stale',id,reason:'HTTP 429：官网限流，已暂缓采集并保留上次有效数据'});
+  }
+  if(health.userRequested)setTimeout(showFailure,180);
+ };
  const ses=win.webContents.session;
+ // Each account has an isolated persistent partition; observe status only,
+ // never network bodies, cookies or Authorization headers.
+ ses.webRequest?.onCompleted?.({urls:['<all_urls>']},details=>{
+  if(details.webContentsId!==win.webContents.id||details.resourceType!=='mainFrame')return;
+  if(!urlHost(details.url,site,true))return;
+  health.httpStatus=details.statusCode||0;
+  if(health.httpStatus===429||health.httpStatus===403||health.httpStatus>=500)
+   fail(classifyWebError(health.httpStatus),health.httpStatus);
+ });
+ win.webContents.on('did-fail-load',(_e,code,_desc,_url,isMainFrame)=>{
+  if(code===-3||isMainFrame===false||health.fallback)return;
+  fail(classifyWebError(0,code));
+ });
+ win.webContents.on('did-finish-load',()=>{
+  if(health.fallback||win.isDestroyed())return;
+  if(health.failure){setTimeout(showFailure,140);return}
+  if(!urlHost(win.webContents.getURL(),site,true))return;
+  setTimeout(async()=>{
+   if(win.isDestroyed()||health.fallback||health.failure||win.webContents.isLoadingMainFrame())return;
+   try{
+    // Detect blank main documents, not missing quota selectors (login is allowed).
+    const blank=await win.webContents.executeJavaScript(
+     '!!document.body && document.body.innerText.trim().length===0 && document.body.querySelectorAll("main,form,input,button,header,article,canvas").length===0',true);
+    if(blank)fail('empty');
+   }catch{}
+  },12000).unref?.();
+ });
+
  ses.setPermissionRequestHandler((_contents,_permission,callback)=>callback(false));
  ses.on('will-download',event=>event.preventDefault());
  // No local downloads or opening unknown browser windows.
@@ -248,7 +304,11 @@ function open(kind,id,visible=true) {
   if(urlHost(url,site,true))void shell.openExternal(url).catch(()=>{});
   return {action:'deny'};
  });
- win.webContents.on('will-navigate',(event,url)=>{if(!urlHost(url,site,true))event.preventDefault()});
+ win.webContents.on('will-navigate',(event,url)=>{
+  if(!urlHost(url,site,true)){event.preventDefault();return}
+  // A person clicked retry on our static fallback page.
+  if(health.fallback){health.fallback=false;health.failure=null;health.httpStatus=0;health.sampled=false;health.lastReloadAt=Date.now()}
+ });
  win.on('close',event=>{
   if(!shuttingDown && readFile(bindingsPath,{})[id]){
    event.preventDefault();
@@ -256,7 +316,7 @@ function open(kind,id,visible=true) {
   }
  });
  win.on('closed',()=>{
-  windows.delete(key);
+  windows.delete(key);pageHealth.delete(key);
   const t=autoTimers.get(id);if(t){clearInterval(t);autoTimers.delete(id)}
  });
  if(['deepseek','chatgpt'].includes(kind)&&!readFile(bindingsPath,{})[id]){
@@ -273,6 +333,8 @@ async function read(kind,id) {
  safeId(id);const site=safeSite(kind);
  const win=windows.get(sessionKey(kind,id));
  if(!win||win.isDestroyed())throw Error('请先打开该账户的官方额度网页并登录');
+ const health=pageHealth.get(sessionKey(kind,id));
+ if(health?.failure)throw Error(health.httpStatus===429?'HTTP 429：官网限流，暂缓采样':health.failure==='empty'?'官网空白，暂无法识别额度':'官网页面加载失败，暂无法识别额度');
  const url=win.webContents.getURL();
  if(!urlHost(url,site))throw Error('当前不是受支持的额度页面，请完成登录后返回官网');
  if(win.webContents.isLoadingMainFrame())throw Error('页面加载中，请稍后重试');
@@ -311,6 +373,8 @@ async function sample(kind,id,manual=false) {
   writeFile(bindingsPath,current);
  }
  record(point);
+ const health=pageHealth.get(sessionKey(kind,id));
+ if(health)health.sampled=true;
  recovery.succeeded(id);
  notify({type:'snapshot',point,manual});
  return point;
@@ -331,7 +395,7 @@ async function unbind(id) {
  const bindings=readFile(bindingsPath,{});
  const kind=bindings[id]?.kind;
  delete bindings[id];
- recovery.forget(id);
+ recovery.forget(id);pageHealth.delete(sessionKey(kind, id));
  writeFile(bindingsPath,bindings);
  if(kind){
   const key=sessionKey(kind,id);
@@ -357,13 +421,43 @@ async function pollAll() {
    continue;
   }
   if(win.webContents.isLoadingMainFrame())continue;
+  const health=pageHealth.get(sessionKey(binding.kind,id));
+  if(health?.failure){
+   if(!recovery.allowed(id))continue;
+   // A cooldown has expired. Recover using the existing authenticated partition.
+   health.failure=null;health.fallback=false;health.httpStatus=0;health.sampled=false;
+   health.lastReloadAt=Date.now();
+   try{await win.loadURL(safeSite(binding.kind).url)}
+   catch(err){recovery.failed(id,err);continue}
+   if(health.failure)continue;
+  }else if(binding.kind==='deepseek' && health?.sampled
+    && !shouldHardRefresh(binding.kind,health.lastReloadAt)){
+   // Poll the already-loaded DOM without another website request.
+   // Only a CHANGED, verified number becomes a fresh sample.
+   try{
+    await withAccountRefresh(binding.kind,id,async()=>{
+     const view=await read(binding.kind,id);
+     const current=view.candidates.find(c=>c.signature===binding.signature&&
+      c.unit===binding.unit&&c.metric===binding.metric);
+     const last=history(id).at(-1);
+     if(current&&Number.isFinite(current.value)&&current.value!==last?.value)
+      await sample(binding.kind,id);
+    });
+   }catch(err){
+    recovery.failed(id,err);
+    notify({type:'stale',id,reason:String(err.message||'网页数据暂不可用').slice(0,160)});
+   }
+   continue;
+  }
   try{
    await withAccountRefresh(binding.kind,id,async()=>{
    // Refresh live usage dashboards while the website window is hidden.
    // Without this, some SPA dashboards show a stale number indefinitely.
    // Never interrupt a site the user is actively interacting with.
    if(['deepseek','chatgpt'].includes(binding.kind) && !win.isVisible?.()
-      && typeof win.webContents.reloadIgnoringCache==='function'){
+      && (!health||shouldHardRefresh(binding.kind,health.lastReloadAt))
+      && !health?.failure && typeof win.webContents.reloadIgnoringCache==='function'){
+    if(health){health.lastReloadAt=Date.now();health.sampled=false;}
     await new Promise(resolve=>{
      let finished=false;
      const done=()=>{
@@ -374,7 +468,7 @@ async function pollAll() {
      };
      const timeout=setTimeout(done,16000);
      win.webContents.once('did-finish-load',done);
-     try{win.webContents.reloadIgnoringCache()}catch{done()}
+     try{if(binding.kind==='deepseek')win.webContents.reload();else win.webContents.reloadIgnoringCache()}catch{done()}
     });
     await new Promise(r=>setTimeout(r,1800));
    }
@@ -429,15 +523,22 @@ function register({dir,onUpdate}){
   // A user-initiated Refresh must request the latest official usage page,
   // not only reread an outdated hidden SPA DOM.
   const win=windows.get(sessionKey(kind,id));
+  const health=win? pageHealth.get(sessionKey(kind,id)):null;
+  // Manual retry may bypass ordinary transient backoff, never a provider's 429 rate limit.
+  if(!recovery.allowed(id) && (health?.httpStatus===429||health?.failure==='rate-limit'))
+   throw Error('当前官网采集处于退避冷却期，请稍后再试');
+  if(health?.failure)throw Error(health.httpStatus===429?'HTTP 429：官方限流，请稍后再试':'当前官网页面暂不可用');
   if(['deepseek','chatgpt'].includes(kind) && win&&!win.isDestroyed()
-     && !win.isVisible?.() && typeof win.webContents.reloadIgnoringCache==='function'){
+     && !win.isVisible?.() && (!health||shouldHardRefresh(kind,health.lastReloadAt))
+     && typeof win.webContents.reloadIgnoringCache==='function'){
+   if(health){health.lastReloadAt=Date.now();health.sampled=false;}
    await new Promise(resolve=>{
     let done=false;
     const finish=()=>{if(done)return;done=true;clearTimeout(timeout);
       win.webContents.removeListener?.('did-finish-load',finish);resolve()};
     const timeout=setTimeout(finish,12000);
     win.webContents.once?.('did-finish-load',finish);
-    try{win.webContents.reloadIgnoringCache()}catch{finish()}
+    try{if(kind==='deepseek')win.webContents.reload();else win.webContents.reloadIgnoringCache()}catch{finish()}
    });
    await new Promise(resolve=>setTimeout(resolve,1200));
   }
@@ -497,5 +598,6 @@ function shutdown(){
  autoTimers.clear();
  for(const win of windows.values())if(!win.isDestroyed())win.destroy();
  windows.clear();
+ pageHealth.clear();
 }
 module.exports={register,shutdown,flushPersistentSessions,sessionStatus,hasBinding,pollAll,candidates,deepSeekCandidates,chatGPTCandidates,parseDeepSeekAccount,normalizeLabel,record,read,bind,open,autoLinkDeepSeek,_testWindows:windows};
